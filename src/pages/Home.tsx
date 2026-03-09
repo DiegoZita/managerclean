@@ -386,7 +386,7 @@ const Home = () => {
                 </div>
 
                 {/* Hero Section */}
-                <section className="container mx-auto px-6 pt-24 pb-16 flex flex-col lg:flex-row items-center gap-12">
+                <section className="container mx-auto px-6 pt-24 pb-16 flex flex-col lg:flex-row items-center gap-12 relative">
                     <div className="lg:w-1/2 space-y-8 relative z-10">
                         <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] text-slate-800 tracking-tight reveal">
                             Seu sofá merece <br /> um cuidado <br /> profissional.
@@ -406,7 +406,7 @@ const Home = () => {
                             </Button>
                         </div>
                     </div>
-                    <div className="lg:w-1/2 relative flex justify-center lg:justify-end reveal reveal-delay-500">
+                    <div className="lg:w-1/2 relative flex justify-center lg:justify-end reveal reveal-delay-500 -mt-24 lg:mt-0">
                         <div className="relative w-full aspect-square transition-transform duration-700">
                             <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-blue-200/40 rounded-full blur-3xl opacity-60"></div>
                             <div
