@@ -34,6 +34,9 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
+    // Prepare for check
+    setLoading(true);
+
     // Admin always has access
     if (currentSession.user.email === 'admin@managerloja.com') {
       setIsComplete(true);
@@ -74,6 +77,7 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     checkStatus();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Prioritize updating session and triggering status check
       setSession(session);
       checkStatus();
     });
@@ -81,7 +85,8 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (session?.user) checkStatus();
+    // Only re-check on path change if strictly necessary
+    // Removed automatic checkStatus on every navigation to avoid race conditions
   }, [location.pathname]);
 
   if (loading) {
