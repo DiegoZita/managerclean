@@ -183,4 +183,20 @@
   .animate-swipe {
     animation: swipe-hand 2s ease-in-out infinite;
   }
+
+  @keyframes floating {
+
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  .animate-floating {
+    animation: floating 4s ease-in-out infinite;
+  }
 }

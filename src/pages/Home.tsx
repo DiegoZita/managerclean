@@ -369,32 +369,12 @@ const Home = () => {
                     <div className="lg:w-1/2 relative flex justify-center lg:justify-end reveal reveal-delay-500">
                         <div className="relative w-full aspect-square max-w-[600px] hover:scale-[1.02] transition-transform duration-700">
                             <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-blue-200/40 rounded-full blur-3xl opacity-60"></div>
-                            {/* 3D-ish composition of laptops/phones can be mimicked using layered divs */}
-                            <div className="relative w-full h-full flex items-center justify-center -rotate-6">
-                                <div className="bg-slate-800 border-[12px] border-slate-900 rounded-2xl w-[80%] h-[60%] shadow-2xl absolute z-10 overflow-hidden flex flex-col">
-                                    {/* Laptop Screen mock */}
-                                    <div className="bg-slate-900 w-full h-12 flex items-center px-4 border-b border-slate-700">
-                                        <div className="flex gap-2">
-                                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 p-6 grid grid-cols-3 gap-4 bg-slate-800">
-                                        <div className="col-span-2 space-y-4">
-                                            <div className="h-24 bg-primary/20 rounded-lg"></div>
-                                            <div className="h-8 bg-slate-700 rounded-lg"></div>
-                                            <div className="h-8 bg-slate-700 rounded-lg w-2/3"></div>
-                                        </div>
-                                        <div className="space-y-4">
-                                            <div className="h-10 bg-blue-500/20 rounded-lg"></div>
-                                            <div className="h-10 bg-blue-500/20 rounded-lg"></div>
-                                            <div className="h-10 bg-blue-500/20 rounded-lg"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Keyboard base mock */}
-                                <div className="bg-slate-300 rounded-b-xl w-[90%] h-8 absolute bottom-[15%] z-0 shadow-lg translate-y-full skew-x-12"></div>
+                            <div className="relative w-full h-full flex items-center justify-center">
+                                <img
+                                    src="/hero1-png.png"
+                                    alt="Hero Manager Clean"
+                                    className="w-full h-auto max-h-[85%] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] animate-floating"
+                                />
                             </div>
                         </div>
                     </div>
