@@ -586,7 +586,7 @@ const Home = () => {
                         </div>
 
                         <div className="lg:w-1/3 text-center lg:text-right space-y-4">
-                            <a href="mailto:hello@managerloja.com" className="block text-xl md:text-2xl font-bold text-slate-700 hover:text-primary transition-colors">hello@managerloja.com</a>
+                            <a href="mailto:contato@managerclean.com.br" className="block text-xl md:text-2xl font-bold text-slate-700 hover:text-primary transition-colors">contato@managerclean.com.br</a>
                             <a href="tel:+5511944816323" className="block text-lg font-bold text-primary">+55 11 94481-6323</a>
 
                             <div className="flex gap-4 justify-center lg:justify-end pt-6">
