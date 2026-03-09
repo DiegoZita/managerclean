@@ -129,7 +129,29 @@ const Home = () => {
             setShowSwipeTutorial(false);
             setTutorialViewed(true);
         }
+
+        // Infinite scroll logic: silently jump back to center when near boundaries
+        if (scrollRef.current) {
+            const { scrollLeft, scrollWidth } = scrollRef.current;
+            const singleSectionWidth = scrollWidth / 3;
+
+            if (scrollLeft <= 5) {
+                // Near start, jump to middle-start
+                scrollRef.current.scrollLeft = singleSectionWidth;
+            } else if (scrollLeft >= (scrollWidth - scrollRef.current.clientWidth - 5)) {
+                // Near end, jump to middle-end
+                scrollRef.current.scrollLeft = singleSectionWidth * 2 - scrollRef.current.clientWidth;
+            }
+        }
     };
+
+    // Initialize carousel at the middle section for infinite feel
+    useEffect(() => {
+        if (scrollRef.current) {
+            const { scrollWidth } = scrollRef.current;
+            scrollRef.current.scrollLeft = scrollWidth / 3;
+        }
+    }, []);
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (!scrollRef.current) return;
@@ -563,9 +585,9 @@ const Home = () => {
                             onTouchMove={handleTouchMove}
                             onScroll={handleCarouselScroll}
                             style={{ scrollBehavior: 'auto', WebkitOverflowScrolling: 'touch' }}
-                            className={`flex w-full gap-6 overflow-x-auto select-none pb-4 pt-4 px-6 ${isDragging ? "cursor-grabbing" : "cursor-grab"} [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory lg:snap-none`}
+                            className={`flex w-full gap-6 overflow-x-auto select-none pb-4 pt-4 px-6 ${isDragging ? "cursor-grabbing" : "cursor-grab"} [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory`}
                         >
-                            {[...HOME_SERVICES].map((item, i) => (
+                            {[...HOME_SERVICES, ...HOME_SERVICES, ...HOME_SERVICES].map((item, i) => (
                                 <div
                                     key={i}
                                     onClick={() => handleItemClick(item)}
