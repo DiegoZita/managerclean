@@ -8,8 +8,12 @@ import { toast } from "sonner";
 import Header from "@/components/Header";
 import { supabase } from "@/lib/supabaseClient";
 
-const Profile = ({ forced = false }: { forced?: boolean }) => {
+import { useSearchParams } from "react-router-dom";
+
+const Profile = ({ forced: forcedProp = false }: { forced?: boolean }) => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const [isForced, setIsForced] = useState(forcedProp || searchParams.get('forced') === 'true');
     const [loading, setLoading] = useState(false);
     const numberInputRef = useRef<HTMLInputElement>(null);
 
@@ -76,8 +80,16 @@ const Profile = ({ forced = false }: { forced?: boolean }) => {
                     number: data.number || "",
                     complement: data.complement || ""
                 });
+
+                // Auto-detect if it should be forced if fields are missing
+                if (!isForced && (!data.full_name || !data.phone || !data.street || !data.number)) {
+                    if (user.email !== 'admin@managerloja.com') {
+                        setIsForced(true);
+                    }
+                }
             } else {
                 // Pre-fill with user meta-data if no profile exists yet
+                setIsForced(user.email !== 'admin@managerloja.com');
                 setFormData(prev => ({
                     ...prev,
                     email: user.email || "",
@@ -211,16 +223,16 @@ const Profile = ({ forced = false }: { forced?: boolean }) => {
 
     return (
         <div className="min-h-screen bg-background">
-            {!forced && <Header cartCount={0} onCartToggle={() => { }} hideCart={true} />}
+            {!isForced && <Header cartCount={0} onCartToggle={() => { }} hideCart={true} />}
 
-            <div className={`container mx-auto px-4 ${forced ? 'py-6' : 'py-12'}`}>
+            <div className={`container mx-auto px-4 ${isForced ? 'py-6' : 'py-12'}`}>
                 <Card className="mx-auto w-full max-w-2xl border-border shadow-lg">
                     <CardHeader>
                         <CardTitle className="text-2xl font-bold text-foreground">
-                            {forced ? "Conclua seu Cadastro" : "Perfil do Cliente"}
+                            {isForced ? "Conclua seu Cadastro" : "Perfil do Cliente"}
                         </CardTitle>
                         <CardDescription>
-                            {forced
+                            {isForced
                                 ? "Para continuar navegando, precisamos que preencha seus dados de contato e endereço."
                                 : "Mantenha seus dados atualizados para facilitar seus agendamentos"}
                         </CardDescription>
@@ -388,7 +400,7 @@ const Profile = ({ forced = false }: { forced?: boolean }) => {
                         </div>
                     </CardContent>
                     <CardFooter className="flex flex-col sm:flex-row justify-end gap-4 border-t border-border pt-6">
-                        {forced && (
+                        {isForced && (
                             <Button
                                 variant="ghost"
                                 onClick={() => supabase.auth.signOut()}

@@ -2,7 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
 import Home from "./pages/Home";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -13,69 +16,74 @@ import NotFound from "./pages/NotFound";
 import Blog from "./pages/Blog";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 
-const ProfileGuard = ({ children }: { children: React.ReactNode }) => {
+// Global Guard to enforce profile completion
+const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [isComplete, setIsComplete] = useState(false);
   const [session, setSession] = useState<any>(null);
+  const location = useLocation();
+
+  const checkStatus = async () => {
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    setSession(currentSession);
+
+    if (!currentSession?.user) {
+      setLoading(false);
+      return;
+    }
+
+    // Admin always has access
+    if (currentSession.user.email === 'admin@managerloja.com') {
+      setIsComplete(true);
+      setLoading(false);
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, phone, street, number')
+      .eq('id', currentSession.user.id)
+      .single();
+
+    const complete = !!(profile?.full_name && profile?.phone && profile?.street && profile?.number);
+    setIsComplete(complete);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const checkProfile = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-
-      if (!currentSession?.user) {
-        setLoading(false);
-        return;
-      }
-
-      // Admin bypass
-      if (currentSession.user.email === 'admin@managerloja.com') {
-        setIsComplete(true);
-        setLoading(false);
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, phone, street, number')
-        .eq('id', currentSession.user.id)
-        .single();
-
-      const complete = !!(profile?.full_name && profile?.phone && profile?.street && profile?.number);
-      setIsComplete(complete);
-      setLoading(false);
-    };
-
-    checkProfile();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      checkProfile();
-    });
-
+    checkStatus();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => checkStatus());
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen bg-primary">
-      <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent shadow-xl"></div>
-    </div>
-  );
+  useEffect(() => {
+    if (session?.user) checkStatus();
+  }, [location.pathname]);
 
-  const path = window.location.pathname;
-
-  // Not logged in -> only allow these
-  if (!session?.user) {
-    const publicPaths = ['/login', '/forgot-password', '/reset-password', '/'];
-    if (publicPaths.includes(path)) return <>{children}</>;
-    return <Login />;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-primary">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent shadow-xl"></div>
+      </div>
+    );
   }
 
-  // Logged in but incomplete profile -> force /profile
-  if (session.user && !isComplete && path !== '/profile' && session.user.email !== 'admin@managerloja.com') {
-    return <Profile forced={true} />;
+  const path = location.pathname;
+
+  // 1. If logged in but incomplete -> Force /profile
+  if (session?.user && !isComplete && session.user.email !== 'admin@managerloja.com') {
+    if (path !== '/profile') {
+      return <Navigate to="/profile" replace />;
+    }
+  }
+
+  // 2. If NOT logged in -> Only allow public paths
+  if (!session?.user) {
+    const publicPaths = ['/', '/login', '/forgot-password', '/reset-password', '/blog'];
+    if (!publicPaths.includes(path)) {
+      return <Navigate to="/login" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -89,18 +97,20 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<ProfileGuard><Home /></ProfileGuard>} />
-          <Route path="/orcamento" element={<ProfileGuard><Index /></ProfileGuard>} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/profile" element={<ProfileGuard><Profile /></ProfileGuard>} />
-          <Route path="/admin" element={<ProfileGuard><Admin /></ProfileGuard>} />
-          <Route path="/pedidos" element={<ProfileGuard><Orders /></ProfileGuard>} />
-          <Route path="/blog" element={<ProfileGuard><Blog /></ProfileGuard>} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <GlobalGuard>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/orcamento" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/pedidos" element={<Orders />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </GlobalGuard>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
