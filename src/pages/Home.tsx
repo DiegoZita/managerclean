@@ -110,8 +110,8 @@ const Home = () => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('reveal-visible');
 
-                    // Show tutorial only for services section
-                    if (entry.target.id === 'services-container' && !tutorialViewed) {
+                    // Show tutorial only for services section and only on mobile/tablet
+                    if (entry.target.id === 'services-container' && !tutorialViewed && window.innerWidth < 1024) {
                         setShowSwipeTutorial(true);
                     }
                 }
@@ -144,6 +144,25 @@ const Home = () => {
             }
         }
     };
+
+    // Auto-scroll logic ONLY for Desktop (window width >= 1024px)
+    useEffect(() => {
+        // Don't auto-scroll on mobile or tablet
+        if (window.innerWidth < 1024) return;
+
+        let animationFrameId: number;
+        const speed = 1;
+
+        const scroll = () => {
+            if (!isHovered && !isDragging && scrollRef.current) {
+                scrollRef.current.scrollLeft += speed;
+            }
+            animationFrameId = requestAnimationFrame(scroll);
+        };
+
+        animationFrameId = requestAnimationFrame(scroll);
+        return () => cancelAnimationFrame(animationFrameId);
+    }, [isHovered, isDragging]);
 
     // Initialize carousel at the middle section for infinite feel
     useEffect(() => {
