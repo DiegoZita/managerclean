@@ -346,7 +346,7 @@ const Home = () => {
                 </div>
 
                 {/* Hero Section */}
-                <section className="container mx-auto px-6 pt-28 pb-32 flex flex-col lg:flex-row items-center gap-16">
+                <section className="container mx-auto px-6 pt-24 pb-16 flex flex-col lg:flex-row items-center gap-12">
                     <div className="lg:w-1/2 space-y-8 relative z-10">
                         <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] text-slate-800 tracking-tight reveal">
                             Seu sofá merece <br /> um cuidado <br /> profissional.
@@ -381,8 +381,8 @@ const Home = () => {
                 </section>
 
                 {/* Solutions Grid */}
-                <section id="solutions" className="container mx-auto px-6 py-24 relative z-10">
-                    <div className="mb-16 max-w-3xl reveal">
+                <section id="solutions" className="container mx-auto px-6 py-12 relative z-10">
+                    <div className="mb-8 max-w-3xl reveal">
                         <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-4">Soluções Completas em Higienização</h2>
                         <p className="text-slate-500 text-lg leading-relaxed">
                             Conheça nossos serviços profissionais para estofados, veículos e ambientes, garantindo mais limpeza, proteção e bem-estar para o seu dia a dia.
@@ -424,7 +424,7 @@ const Home = () => {
                 </div>
 
                 {/* Our Clients Section */}
-                <section className="bg-primary py-12 relative px-6 z-10 w-full">
+                <section className="bg-primary py-8 relative px-6 z-10 w-full">
                     <div className="container mx-auto">
 
                         <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-8 reveal">Fácil, Rápido e Seguro!</h2>
@@ -499,7 +499,7 @@ const Home = () => {
                 </div>
 
                 {/* About Us */}
-                <section id="about" className="container mx-auto px-6 py-24 flex flex-col md:flex-row items-center gap-16 relative z-10 w-full mt-[-60px]">
+                <section id="about" className="container mx-auto px-6 py-12 flex flex-col md:flex-row items-center gap-16 relative z-10 w-full mt-[-40px]">
                     <div className="md:w-[45%] reveal">
                         <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-8">Sobre Nós</h2>
                         <div className="text-slate-500 mb-10 leading-relaxed text-[15px] space-y-4">
@@ -526,7 +526,7 @@ const Home = () => {
                             SABER MAIS
                         </Button>
                     </div>
-                    <div className="md:w-[55%] flex justify-center mt-12 md:mt-0 relative reveal reveal-delay-300">
+                    <div className="md:w-[55%] flex justify-center mt-8 md:mt-0 relative reveal reveal-delay-300">
                         <div className="absolute inset-0 bg-blue-50 rounded-full blur-3xl scale-75 opacity-70"></div>
                         {/* Highlights Image */}
                         <div className="relative w-full aspect-square max-w-[650px] scale-110 lg:scale-[1.15]">
@@ -550,8 +550,8 @@ const Home = () => {
                 </section>
 
                 {/* Services Grid */}
-                <section id="services" className="bg-slate-50 py-32 mt-12 relative">
-                    <div className="container mx-auto px-6 mb-16 reveal">
+                <section id="services" className="bg-slate-50 py-16 mt-8 relative">
+                    <div className="container mx-auto px-6 mb-8 reveal">
                         <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-4">Serviços</h2>
                         <p className="text-slate-500 max-w-2xl leading-relaxed text-[15px] mb-6">
                             A higienização de estofados vai muito além da limpeza superficial. Nosso processo remove sujeira profunda, elimina odores e devolve o aspecto renovado ao tecido.
@@ -619,8 +619,8 @@ const Home = () => {
                 </Dialog.Root>
 
                 {/* Footer */}
-                <footer id="contact" className="bg-white pt-24 pb-12 w-full">
-                    <div className="container mx-auto px-6 flex flex-col lg:flex-row items-center justify-between gap-12 border-b border-slate-100 pb-16">
+                <footer id="contact" className="bg-white pt-16 pb-8 w-full">
+                    <div className="container mx-auto px-6 flex flex-col lg:flex-row items-center justify-between gap-12 border-b border-slate-100 pb-12">
                         <div className="lg:w-1/2 text-center lg:text-left reveal">
 
                             <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-8">
