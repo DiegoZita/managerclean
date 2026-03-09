@@ -74,25 +74,25 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
     checkStatus();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      checkStatus();
+      checkStatus(true); // Check silently on auth change to avoid unnecessary spinners
     });
     return () => subscription.unsubscribe();
   }, []);
 
+  const path = location.pathname;
+
   useEffect(() => {
-    // Re-check status on path change
+    // Re-check status on path change if logged in
     if (session?.user) {
-      // If we are trying to leave /profile but are not marked complete, 
-      // we need a non-silent check to show the loading state and prevent redirect loops.
-      if (!isComplete && path !== '/profile') {
+      const publicPaths = ['/', '/login', '/forgot-password', '/reset-password', '/blog', '/orcamento'];
+      // Only be loud about checking if we are moving to a protected route
+      if (!publicPaths.includes(path) && path !== '/profile') {
         checkStatus();
       } else {
         checkStatus(true);
       }
     }
-  }, [location.pathname]);
-
-  const path = location.pathname;
+  }, [path, session?.user?.id]);
 
   if (loading && path !== '/login' && path !== '/profile') {
     return (
@@ -102,22 +102,18 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // STRICT RULES:
-
   // 1. Logged in + Not Admin + Incomplete -> MUST be on /profile
   if (session?.user && session.user.email !== 'admin@managerloja.com' && !isComplete) {
     if (path !== '/profile') {
-      console.log("Blocking navigation: Incomplete profile detected for", session.user.email);
       return <Navigate to="/profile" replace />;
     }
   }
 
   // 2. Not Logged In -> Only public paths
   if (!session?.user) {
-    const publicPaths = ['/', '/login', '/forgot-password', '/reset-password', '/blog'];
+    const publicPaths = ['/', '/login', '/forgot-password', '/reset-password', '/blog', '/orcamento'];
     if (!publicPaths.includes(path)) {
-      // Use pathname string instead of location object to keep it simple for Login.tsx
-      return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+      return <Navigate to="/login" state={{ from: path }} replace />;
     }
   }
 
