@@ -346,7 +346,7 @@ const Home = () => {
                 </div>
 
                 {/* Hero Section */}
-                <section className="container mx-auto px-6 pt-28 pb-32 flex flex-col-reverse lg:flex-row items-center gap-16">
+                <section className="container mx-auto px-6 pt-28 pb-32 flex flex-col lg:flex-row items-center gap-16">
                     <div className="lg:w-1/2 space-y-8 relative z-10">
                         <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] text-slate-800 tracking-tight reveal">
                             Seu sofá merece <br /> um cuidado <br /> profissional.
