@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { Facebook, Twitter, Instagram, Linkedin, AlertTriangle } from "lucide-react";
+import { Facebook, Youtube, Instagram, Threads, AlertTriangle } from "lucide-react";
 
 const NotFound = () => {
   const location = useLocation();
@@ -55,9 +55,9 @@ const NotFound = () => {
           <div className="lg:w-1/3 text-center lg:text-right space-y-4">
             <div className="flex gap-4 justify-center lg:justify-end">
               <a href="https://www.facebook.com/managerclean?locale=pt_BR" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white transition-all shadow-sm"><Facebook className="w-4 h-4" /></a>
-              <a href="#" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white transition-all shadow-sm"><Twitter className="w-4 h-4" /></a>
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white transition-all shadow-sm"><Youtube className="w-4 h-4" /></a>
               <a href="https://www.instagram.com/managerclean/" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white transition-all shadow-sm"><Instagram className="w-4 h-4" /></a>
-              <a href="#" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white transition-all shadow-sm"><Linkedin className="w-4 h-4" /></a>
+              <a href="#" className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-primary hover:text-white transition-all shadow-sm"><Threads className="w-4 h-4" /></a>
             </div>
           </div>
         </div>
