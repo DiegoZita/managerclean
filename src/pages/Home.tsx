@@ -83,15 +83,23 @@ const Home = () => {
 
     const handleHeroClick = () => {
         if (isCleaning) return;
+
+        // Se já está limpo, volta para sujo e reinicia o loop
+        if (isClean) {
+            setIsClean(false);
+            return;
+        }
+
+        // Inicia a animação de limpeza
         setIsCleaning(true);
-        // After 1.5 second (halfway through bico animation), swap to clean version
+        // Na metade da animação do bico, troca para a versão limpa
         setTimeout(() => {
             setIsClean(true);
         }, 1500);
-        // Reset cleaning state after animation ends
+        // Encerra o estado de limpeza após a animação
         setTimeout(() => {
             setIsCleaning(false);
-        }, 3000);
+        }, 3500);
     };
 
     useEffect(() => {
