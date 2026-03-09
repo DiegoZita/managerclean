@@ -669,7 +669,7 @@ const Home = () => {
                                     onClick={() => handleItemClick(item)}
                                     className={`w-[280px] shrink-0 aspect-[4/3] rounded-2xl overflow-hidden relative transition-all duration-300 shadow-lg cursor-pointer gpu-accelerated snap-center ${!isDragging ? "hover:shadow-2xl hover:-translate-y-2" : ""}`}
                                 >
-                                    <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-110 pointer-events-none transform-gpu" style={{ backgroundImage: `url(${item.image})` }} />
+                                    <div className="absolute inset-0 bg-cover bg-center pointer-events-none transform-gpu" style={{ backgroundImage: `url(${item.image})` }} />
                                 </div>
                             ))}
                         </div>
@@ -679,15 +679,17 @@ const Home = () => {
                 <Dialog.Root open={!!selectedService} onOpenChange={(open) => !open && setSelectedService(null)}>
                     <Dialog.Portal>
                         <Dialog.Overlay className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300" />
-                        <Dialog.Content className="fixed left-[50%] top-[50%] z-[100] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] bg-transparent p-0 outline-none flex items-center justify-center pointer-events-none">
+                        <Dialog.Content className="fixed left-[50%] top-[50%] z-[100] w-[90vw] max-w-3xl translate-x-[-50%] translate-y-[-50%] bg-transparent p-0 outline-none flex items-center justify-center pointer-events-none">
                             {selectedService && (
-                                <div className="pointer-events-auto w-full group relative overflow-hidden bg-white/10 backdrop-blur-xl border border-white/20 p-12 rounded-3xl text-center transform scale-100 transition-all shadow-[0_0_80px_rgba(0,180,216,0.3)] animate-in zoom-in-95 duration-300">
-                                    <button onClick={() => setSelectedService(null)} className="absolute top-6 right-6 text-white/50 hover:text-white transition-colors">
-                                        <X className="w-6 h-6" />
+                                <div className="pointer-events-auto w-full relative rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                                    <button
+                                        onClick={() => setSelectedService(null)}
+                                        className="absolute top-3 right-3 z-10 bg-black/50 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors"
+                                    >
+                                        <X className="w-5 h-5" />
                                     </button>
-
-                                    <div className="w-full h-64 md:h-80 mx-auto rounded-xl overflow-hidden mb-2 shadow-2xl relative">
-                                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-[2s] hover:scale-105" style={{ backgroundImage: `url(${selectedService.image})` }}></div>
+                                    <div className="w-full h-[55vh] md:h-[70vh]">
+                                        <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${selectedService.image})` }}></div>
                                     </div>
                                 </div>
                             )}

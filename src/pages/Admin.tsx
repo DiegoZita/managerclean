@@ -444,6 +444,8 @@ const Admin = () => {
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [clientPage, setClientPage] = useState(1);
+  const CLIENTS_PER_PAGE = 9;
 
   // Dynamic Benefits states
   const [showBenefits, setShowBenefits] = useState(true);
@@ -749,10 +751,24 @@ const Admin = () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      if (data) setAdminClients(data);
+        .order("updated_at", { ascending: false });
+
+      console.log("[Admin] fetchAdminClients → data:", data, "error:", error);
+
+      if (error) {
+        console.error("[Admin] Erro RLS ou query:", error);
+        toast.error("Erro ao carregar clientes: " + error.message);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.warn("[Admin] Nenhum cliente retornado. Verifique a política RLS na tabela 'profiles' no Supabase. O admin precisa de permissão SELECT em todos os perfis.");
+        toast.info("Nenhum cliente encontrado. Verifique as permissões RLS no Supabase.");
+      }
+
+      setAdminClients(data ?? []);
     } catch (err: any) {
+      console.error("[Admin] Erro catastrófico:", err);
       toast.error("Erro ao carregar clientes: " + err.message);
     } finally {
       setLoadingClients(false);
@@ -2299,71 +2315,101 @@ const Admin = () => {
                 <h3 className="text-lg font-semibold mb-2">Nenhum cliente cadastrado.</h3>
                 <p className="text-muted-foreground">Não há perfis de clientes salvos na base de dados.</p>
               </div>
-            ) : (
-              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {adminClients.filter(client => {
-                  const searchTerm = clientSearchQuery.toLowerCase();
-                  return (client.full_name?.toLowerCase().includes(searchTerm) ||
-                    client.name?.toLowerCase().includes(searchTerm) ||
-                    client.email?.toLowerCase().includes(searchTerm));
-                }).map((client) => {
-                  // Priorizar a data de criação do perfil (data de inscrição)
-                  const recordDate = client.created_at || client.updated_at;
-                  const date = recordDate ? new Date(recordDate) : new Date();
-                  return (
-                    <div key={client.id} className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col gap-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-4 border-b border-border pb-4 relative">
-                        <button
-                          onClick={() => handleDeleteClient(client.id)}
-                          className="absolute -top-2 -right-2 p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground rounded-full transition-colors opacity-60 hover:opacity-100"
-                          title="Excluir Cliente Permanentemente"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-                          {(client.full_name || client.name || "U")[0].toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-lg text-foreground truncate">{client.full_name || client.name || "Cliente sem Nome"}</h4>
-                          <p className="text-sm text-muted-foreground truncate">{client.email || "Sem e-mail"}</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 text-sm text-foreground">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-secondary/50 flex flex-col items-center justify-center shrink-0">
-                            <User className="w-4 h-4 text-muted-foreground" />
+            ) : (() => {
+              const filtered = adminClients.filter(client => {
+                const searchTerm = clientSearchQuery.toLowerCase();
+                return (client.full_name?.toLowerCase().includes(searchTerm) ||
+                  client.name?.toLowerCase().includes(searchTerm) ||
+                  client.email?.toLowerCase().includes(searchTerm));
+              });
+              const totalPages = Math.ceil(filtered.length / CLIENTS_PER_PAGE);
+              const paginated = filtered.slice((clientPage - 1) * CLIENTS_PER_PAGE, clientPage * CLIENTS_PER_PAGE);
+              return (
+                <>
+                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {paginated.map((client) => {
+                      const recordDate = client.created_at || client.updated_at;
+                      const date = recordDate ? new Date(recordDate) : new Date();
+                      return (
+                        <div key={client.id} className="bg-card rounded-xl shadow-sm border border-border p-6 flex flex-col gap-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-4 border-b border-border pb-4 relative">
+                            <button
+                              onClick={() => handleDeleteClient(client.id)}
+                              className="absolute -top-2 -right-2 p-1.5 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground rounded-full transition-colors opacity-60 hover:opacity-100"
+                              title="Excluir Cliente Permanentemente"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
+                              {(client.full_name || client.name || "U")[0].toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-lg text-foreground truncate">{client.full_name || client.name || "Cliente sem Nome"}</h4>
+                              <p className="text-sm text-muted-foreground truncate">{client.email || "Sem e-mail"}</p>
+                            </div>
                           </div>
-                          {client.phone || <i className="text-muted-foreground">Telefone não informado</i>}
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-secondary/50 flex flex-col items-center justify-center shrink-0">
-                            <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                          </div>
-                          <span className="line-clamp-3 leading-snug pt-1">
-                            {client.street ? (
-                              <>
-                                {client.street}, {client.number || "S/N"}<br />
-                                {client.neighborhood && <>{client.neighborhood} - </>}{client.city}/{client.state}
-                              </>
-                            ) : (
-                              <i className="text-muted-foreground">Endereço não informado</i>
-                            )}
-                          </span>
-                        </div>
-                      </div>
 
-                      <div className="mt-auto pt-4 flex gap-2 justify-between items-center text-xs text-muted-foreground border-t border-border">
-                        <span className="flex items-center gap-1 font-medium bg-muted px-2 py-1 rounded-md">
-                          <CalendarIcon className="w-3.5 h-3.5" /> ID: {client.id.slice(0, 8).toUpperCase()}...
-                        </span>
-                        <span>Registrado em {format(date, "dd/MM/yyyy")}</span>
-                      </div>
+                          <div className="space-y-3 text-sm text-foreground">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-secondary/50 flex flex-col items-center justify-center shrink-0">
+                                <User className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                              {client.phone || <i className="text-muted-foreground">Telefone não informado</i>}
+                            </div>
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 rounded-full bg-secondary/50 flex flex-col items-center justify-center shrink-0">
+                                <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
+                              </div>
+                              <span className="line-clamp-3 leading-snug pt-1">
+                                {client.street ? (
+                                  <>
+                                    {client.street}, {client.number || "S/N"}<br />
+                                    {client.neighborhood && <>{client.neighborhood} - </>}{client.city}/{client.state}
+                                  </>
+                                ) : (
+                                  <i className="text-muted-foreground">Endereço não informado</i>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-auto pt-4 flex gap-2 justify-between items-center text-xs text-muted-foreground border-t border-border">
+                            <span className="flex items-center gap-1 font-medium bg-muted px-2 py-1 rounded-md">
+                              <CalendarIcon className="w-3.5 h-3.5" /> ID: {client.id.slice(0, 8).toUpperCase()}...
+                            </span>
+                            <span>Registrado em {format(date, "dd/MM/yyyy")}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Paginação */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-4 mt-8">
+                      <button
+                        onClick={() => setClientPage(p => Math.max(1, p - 1))}
+                        disabled={clientPage === 1}
+                        className="w-10 h-10 flex items-center justify-center rounded-full border border-border bg-card hover:bg-primary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-sm font-semibold text-muted-foreground">
+                        Página {clientPage} de {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setClientPage(p => Math.min(totalPages, p + 1))}
+                        disabled={clientPage === totalPages}
+                        className="w-10 h-10 flex items-center justify-center rounded-full border border-border bg-card hover:bg-primary hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  )}
+                </>
+              );
+            })()}
+
           </div>
         )}
 
