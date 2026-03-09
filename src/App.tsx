@@ -29,6 +29,7 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
     setSession(currentSession);
 
     if (!currentSession?.user) {
+      setIsComplete(false);
       setLoading(false);
       return;
     }
@@ -40,20 +41,42 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name, phone, street, number')
-      .eq('id', currentSession.user.id)
-      .single();
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('full_name, phone, street, number')
+        .eq('id', currentSession.user.id)
+        .maybeSingle();
 
-    const complete = !!(profile?.full_name && profile?.phone && profile?.street && profile?.number);
-    setIsComplete(complete);
-    setLoading(false);
+      if (error) {
+        console.error("Profile check error:", error);
+        setIsComplete(false);
+      } else if (!profile) {
+        // No profile record yet
+        setIsComplete(false);
+      } else {
+        const complete = !!(
+          profile.full_name?.trim() &&
+          profile.phone?.trim() &&
+          profile.street?.trim() &&
+          profile.number?.trim()
+        );
+        setIsComplete(complete);
+      }
+    } catch (err) {
+      console.error("Critical Guard error:", err);
+      setIsComplete(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     checkStatus();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => checkStatus());
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      checkStatus();
+    });
     return () => subscription.unsubscribe();
   }, []);
 
@@ -71,14 +94,17 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
 
   const path = location.pathname;
 
-  // 1. If logged in but incomplete -> Force /profile
-  if (session?.user && !isComplete && session.user.email !== 'admin@managerloja.com') {
+  // STRICT RULES:
+
+  // 1. Logged in + Not Admin + Incomplete -> MUST be on /profile
+  if (session?.user && session.user.email !== 'admin@managerloja.com' && !isComplete) {
     if (path !== '/profile') {
+      console.log("Blocking navigation: Incomplete profile detected for", session.user.email);
       return <Navigate to="/profile" replace />;
     }
   }
 
-  // 2. If NOT logged in -> Only allow public paths
+  // 2. Not Logged In -> Only public paths
   if (!session?.user) {
     const publicPaths = ['/', '/login', '/forgot-password', '/reset-password', '/blog'];
     if (!publicPaths.includes(path)) {
