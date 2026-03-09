@@ -199,7 +199,7 @@ const Profile = ({ forced = false }: { forced?: boolean }) => {
 
             if (profileError) throw profileError;
 
-            toast.success("Perfil atualizado com sucesso!");
+            toast.success("Perfil salvo com sucesso!");
             window.dispatchEvent(new Event('storage')); // Trigger update in other components like Header
             navigate("/");
         } catch (error: any) {
