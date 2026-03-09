@@ -68,6 +68,18 @@ const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = fal
     navigate("/login");
   };
 
+  const scrollToSection = (sectionId: string) => {
+    if (window.location.pathname !== '/') {
+      navigate(`/#${sectionId}`);
+      return;
+    }
+
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="relative bg-primary z-50">
       <header className="w-full">
@@ -81,28 +93,28 @@ const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = fal
           <div className="flex items-center justify-end gap-2 sm:gap-4 md:gap-6">
             <nav className="hidden lg:flex items-center gap-4 md:gap-6">
               <button
-                onClick={() => navigate("/#about")}
-                className="text-primary-foreground text-[13px] font-bold tracking-wide hover:opacity-80 transition-opacity uppercase"
-              >
-                Sobre
-              </button>
-
-              <button
-                onClick={() => navigate("/#solutions")}
+                onClick={() => scrollToSection("solutions")}
                 className="text-primary-foreground text-[13px] font-bold tracking-wide hover:opacity-80 transition-opacity uppercase"
               >
                 Soluções
               </button>
 
               <button
-                onClick={() => navigate("/#services")}
+                onClick={() => scrollToSection("about")}
+                className="text-primary-foreground text-[13px] font-bold tracking-wide hover:opacity-80 transition-opacity uppercase"
+              >
+                Sobre
+              </button>
+
+              <button
+                onClick={() => scrollToSection("services")}
                 className="text-primary-foreground text-[13px] font-bold tracking-wide hover:opacity-80 transition-opacity uppercase"
               >
                 Serviços
               </button>
 
               <button
-                onClick={() => navigate("/#contact")}
+                onClick={() => scrollToSection("contact")}
                 className="text-primary-foreground text-[13px] font-bold tracking-wide hover:opacity-80 transition-opacity uppercase"
               >
                 Contato
@@ -215,25 +227,25 @@ const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = fal
           <div className="lg:hidden bg-primary-foreground/95 backdrop-blur-md absolute top-full left-0 w-full shadow-2xl border-t border-slate-100 animate-in slide-in-from-top duration-300 z-50">
             <nav className="flex flex-col p-6 space-y-4">
               <button
-                onClick={() => { navigate("/#about"); setIsMenuOpen(false); }}
-                className="text-primary text-sm font-bold tracking-wide text-left uppercase py-2 border-b border-slate-100"
-              >
-                Sobre
-              </button>
-              <button
-                onClick={() => { navigate("/#solutions"); setIsMenuOpen(false); }}
+                onClick={() => { scrollToSection("solutions"); setIsMenuOpen(false); }}
                 className="text-primary text-sm font-bold tracking-wide text-left uppercase py-2 border-b border-slate-100"
               >
                 Soluções
               </button>
               <button
-                onClick={() => { navigate("/#services"); setIsMenuOpen(false); }}
+                onClick={() => { scrollToSection("about"); setIsMenuOpen(false); }}
+                className="text-primary text-sm font-bold tracking-wide text-left uppercase py-2 border-b border-slate-100"
+              >
+                Sobre
+              </button>
+              <button
+                onClick={() => { scrollToSection("services"); setIsMenuOpen(false); }}
                 className="text-primary text-sm font-bold tracking-wide text-left uppercase py-2 border-b border-slate-100"
               >
                 Serviços
               </button>
               <button
-                onClick={() => { navigate("/#contact"); setIsMenuOpen(false); }}
+                onClick={() => { scrollToSection("contact"); setIsMenuOpen(false); }}
                 className="text-primary text-sm font-bold tracking-wide text-left uppercase py-2 border-b border-slate-100"
               >
                 Contato

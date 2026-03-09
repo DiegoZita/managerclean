@@ -184,8 +184,8 @@ const Home = () => {
                         </div>
                         <div className="flex items-center gap-4">
                             <nav className="hidden lg:flex items-center gap-8 text-[13px] font-bold tracking-wide text-white/90 uppercase">
-                                <a href="#about" className="hover:text-white transition-colors drop-shadow-sm">SOBRE</a>
                                 <a href="#solutions" className="hover:text-white transition-colors drop-shadow-sm">SOLUÇÕES</a>
+                                <a href="#about" className="hover:text-white transition-colors drop-shadow-sm">SOBRE</a>
                                 <a href="#services" className="hover:text-white transition-colors drop-shadow-sm">SERVIÇOS</a>
                                 <a href="#contact" className="hover:text-white transition-colors drop-shadow-sm">CONTATO</a>
                                 <a href="/blog" className="hover:text-white transition-colors drop-shadow-sm">BLOG</a>
@@ -268,8 +268,8 @@ const Home = () => {
                     {isMenuOpen && (
                         <div className="lg:hidden bg-primary shadow-2xl border-t border-white/10 animate-in slide-in-from-top duration-300">
                             <nav className="flex flex-col p-6 space-y-4">
-                                <a href="#about" onClick={() => setIsMenuOpen(false)} className="text-white text-sm font-bold tracking-wide uppercase py-2 border-b border-white/5">SOBRE</a>
                                 <a href="#solutions" onClick={() => setIsMenuOpen(false)} className="text-white text-sm font-bold tracking-wide uppercase py-2 border-b border-white/5">SOLUÇÕES</a>
+                                <a href="#about" onClick={() => setIsMenuOpen(false)} className="text-white text-sm font-bold tracking-wide uppercase py-2 border-b border-white/5">SOBRE</a>
                                 <a href="#services" onClick={() => setIsMenuOpen(false)} className="text-white text-sm font-bold tracking-wide uppercase py-2 border-b border-white/5">SERVIÇOS</a>
                                 <a href="#contact" onClick={() => setIsMenuOpen(false)} className="text-white text-sm font-bold tracking-wide uppercase py-2 border-b border-white/5">CONTATO</a>
                                 <a href="/blog" onClick={() => setIsMenuOpen(false)} className="text-white text-sm font-bold tracking-wide uppercase py-2 border-b border-white/5">BLOG</a>
