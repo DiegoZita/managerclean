@@ -102,13 +102,14 @@ const Home = () => {
 
         const scroll = () => {
             if (!isHovered && !isDragging && scrollRef.current) {
+                // Use floor for consistent pixel steps on iOS/High-res screens
                 scrollRef.current.scrollLeft += speed;
 
-                const singleSetWidth = scrollRef.current.scrollWidth / 3;
+                const singleSetWidth = Math.floor(scrollRef.current.scrollWidth / 3);
                 if (scrollRef.current.scrollLeft >= singleSetWidth) {
-                    scrollRef.current.scrollLeft -= singleSetWidth;
+                    scrollRef.current.scrollLeft = 0;
                 } else if (scrollRef.current.scrollLeft <= 0) {
-                    scrollRef.current.scrollLeft += singleSetWidth;
+                    scrollRef.current.scrollLeft = singleSetWidth - 1;
                 }
             }
             animationFrameId = requestAnimationFrame(scroll);
@@ -562,15 +563,16 @@ const Home = () => {
                             onTouchStart={handleTouchStart}
                             onTouchEnd={handleMouseUp}
                             onTouchMove={handleTouchMove}
+                            style={{ scrollBehavior: 'auto', WebkitOverflowScrolling: 'touch' }}
                             className={`flex w-full gap-6 overflow-x-auto select-none pb-4 pt-4 px-6 ${isDragging ? "cursor-grabbing" : "cursor-grab"} [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
                         >
                             {[...HOME_SERVICES, ...HOME_SERVICES, ...HOME_SERVICES].map((item, i) => (
                                 <div
                                     key={i}
                                     onClick={() => handleItemClick(item)}
-                                    className={`w-[280px] shrink-0 aspect-[4/3] rounded-2xl overflow-hidden relative transition-all duration-300 shadow-lg cursor-pointer ${!isDragging ? "hover:shadow-2xl hover:-translate-y-2" : ""}`}
+                                    className={`w-[280px] shrink-0 aspect-[4/3] rounded-2xl overflow-hidden relative transition-all duration-300 shadow-lg cursor-pointer gpu-accelerated ${!isDragging ? "hover:shadow-2xl hover:-translate-y-2" : ""}`}
                                 >
-                                    <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-110 pointer-events-none" style={{ backgroundImage: `url(${item.image})` }} />
+                                    <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-110 pointer-events-none transform-gpu" style={{ backgroundImage: `url(${item.image})` }} />
                                 </div>
                             ))}
                         </div>
