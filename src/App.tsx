@@ -25,6 +25,7 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   const checkStatus = async () => {
+    setLoading(true);
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     setSession(currentSession);
 
@@ -33,9 +34,6 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
       return;
     }
-
-    // Prepare for check
-    setLoading(true);
 
     // Admin always has access
     if (currentSession.user.email === 'admin@managerloja.com') {
@@ -77,6 +75,7 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     checkStatus();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setLoading(true);
       // Prioritize updating session and triggering status check
       setSession(session);
       checkStatus();
@@ -89,15 +88,15 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
     // Removed automatic checkStatus on every navigation to avoid race conditions
   }, [location.pathname]);
 
-  if (loading) {
+  const path = location.pathname;
+
+  if (loading && path !== '/login' && path !== '/profile') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-primary">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent shadow-xl"></div>
       </div>
     );
   }
-
-  const path = location.pathname;
 
   // STRICT RULES:
 
