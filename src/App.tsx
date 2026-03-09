@@ -24,21 +24,22 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<any>(null);
   const location = useLocation();
 
-  const checkStatus = async () => {
-    setLoading(true);
+  const checkStatus = async (silent = false) => {
+    if (!silent) setLoading(true);
+
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     setSession(currentSession);
 
     if (!currentSession?.user) {
       setIsComplete(false);
-      setLoading(false);
+      if (!silent) setLoading(false);
       return;
     }
 
     // Admin always has access
     if (currentSession.user.email === 'admin@managerloja.com') {
       setIsComplete(true);
-      setLoading(false);
+      if (!silent) setLoading(false);
       return;
     }
 
@@ -51,16 +52,13 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error("Profile check error:", error);
-        setIsComplete(false);
-      } else if (!profile) {
-        // No profile record yet
-        setIsComplete(false);
+        setIsComplete(false); // Keep this for explicit error handling
       } else {
         const complete = !!(
-          profile.full_name?.trim() &&
-          profile.phone?.trim() &&
-          profile.street?.trim() &&
-          profile.number?.trim()
+          profile?.full_name?.trim() &&
+          profile?.phone?.trim() &&
+          profile?.street?.trim() &&
+          profile?.number?.trim()
         );
         setIsComplete(complete);
       }
@@ -68,15 +66,13 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
       console.error("Critical Guard error:", err);
       setIsComplete(false);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     checkStatus();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setLoading(true);
-      // Prioritize updating session and triggering status check
       setSession(session);
       checkStatus();
     });
@@ -84,8 +80,16 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    // Only re-check on path change if strictly necessary
-    // Removed automatic checkStatus on every navigation to avoid race conditions
+    // Re-check status on path change
+    if (session?.user) {
+      // If we are trying to leave /profile but are not marked complete, 
+      // we need a non-silent check to show the loading state and prevent redirect loops.
+      if (!isComplete && path !== '/profile') {
+        checkStatus();
+      } else {
+        checkStatus(true);
+      }
+    }
   }, [location.pathname]);
 
   const path = location.pathname;
@@ -112,7 +116,8 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
   if (!session?.user) {
     const publicPaths = ['/', '/login', '/forgot-password', '/reset-password', '/blog'];
     if (!publicPaths.includes(path)) {
-      return <Navigate to="/login" state={{ from: location }} replace />;
+      // Use pathname string instead of location object to keep it simple for Login.tsx
+      return <Navigate to="/login" state={{ from: location.pathname }} replace />;
     }
   }
 
