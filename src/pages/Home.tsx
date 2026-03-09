@@ -28,7 +28,8 @@ import {
     Package,
     Settings,
     Menu,
-    Wallet
+    Wallet,
+    MoveHorizontal
 } from "lucide-react";
 import logo from "@/assets/logo-manager-clean.png";
 import { supabase } from "@/lib/supabaseClient";
@@ -58,6 +59,8 @@ const Home = () => {
     const [selectedService, setSelectedService] = useState<typeof HOME_SERVICES[0] | null>(null);
     const [userData, setUserData] = useState<{ name?: string; email?: string } | null>(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
+    const [tutorialViewed, setTutorialViewed] = useState(false);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -97,30 +100,8 @@ const Home = () => {
     const [hasDragged, setHasDragged] = useState(false);
 
     useEffect(() => {
-        let animationFrameId: number;
-        const speed = window.innerWidth < 768 ? 0.5 : 1;
-
-        const scroll = () => {
-            if (!isHovered && !isDragging && scrollRef.current) {
-                // Use floor for consistent pixel steps on iOS/High-res screens
-                scrollRef.current.scrollLeft += speed;
-
-                const singleSetWidth = Math.floor(scrollRef.current.scrollWidth / 3);
-                if (scrollRef.current.scrollLeft >= singleSetWidth) {
-                    scrollRef.current.scrollLeft = 0;
-                } else if (scrollRef.current.scrollLeft <= 0) {
-                    scrollRef.current.scrollLeft = singleSetWidth - 1;
-                }
-            }
-            animationFrameId = requestAnimationFrame(scroll);
-        };
-        animationFrameId = requestAnimationFrame(scroll);
-        return () => cancelAnimationFrame(animationFrameId);
-    }, [isHovered, isDragging]);
-
-    useEffect(() => {
         const observerOptions = {
-            threshold: 0.1,
+            threshold: 0.2,
             rootMargin: '0px 0px -50px 0px'
         };
 
@@ -128,19 +109,27 @@ const Home = () => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('reveal-visible');
-                    // Once visible, we can stop observing if we only want it once, 
-                    // but user said "whenever returns to home", and typically that means on mount.
-                    // If we want it to re-animate on every scroll up/down, we don't unobserve.
-                    // But standard reveal is usually once per mount.
+
+                    // Show tutorial only for services section
+                    if (entry.target.id === 'services-container' && !tutorialViewed) {
+                        setShowSwipeTutorial(true);
+                    }
                 }
             });
         }, observerOptions);
 
-        const revealElements = document.querySelectorAll('.reveal');
+        const revealElements = document.querySelectorAll('.reveal, #services-container');
         revealElements.forEach(el => observer.observe(el));
 
         return () => observer.disconnect();
-    }, []);
+    }, [tutorialViewed]);
+
+    const handleCarouselScroll = () => {
+        if (showSwipeTutorial) {
+            setShowSwipeTutorial(false);
+            setTutorialViewed(true);
+        }
+    };
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (!scrollRef.current) return;
@@ -551,8 +540,17 @@ const Home = () => {
                         </Button>
                     </div>
 
-                    <div className="w-full relative overflow-hidden group py-8 -mt-8 reveal reveal-delay-200">
-
+                    <div id="services-container" className="w-full relative overflow-hidden group py-8 -mt-8 reveal reveal-delay-200">
+                        {showSwipeTutorial && (
+                            <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none transition-opacity duration-500">
+                                <div className="bg-primary/90 text-white p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-3 backdrop-blur-sm scale-110">
+                                    <div className="relative">
+                                        <MoveHorizontal className="w-12 h-12 animate-swipe" />
+                                    </div>
+                                    <p className="text-sm font-black uppercase tracking-widest">Deslize para ver</p>
+                                </div>
+                            </div>
+                        )}
                         <div
                             ref={scrollRef}
                             onMouseEnter={() => setIsHovered(true)}
@@ -563,14 +561,15 @@ const Home = () => {
                             onTouchStart={handleTouchStart}
                             onTouchEnd={handleMouseUp}
                             onTouchMove={handleTouchMove}
+                            onScroll={handleCarouselScroll}
                             style={{ scrollBehavior: 'auto', WebkitOverflowScrolling: 'touch' }}
-                            className={`flex w-full gap-6 overflow-x-auto select-none pb-4 pt-4 px-6 ${isDragging ? "cursor-grabbing" : "cursor-grab"} [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
+                            className={`flex w-full gap-6 overflow-x-auto select-none pb-4 pt-4 px-6 ${isDragging ? "cursor-grabbing" : "cursor-grab"} [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x snap-mandatory lg:snap-none`}
                         >
-                            {[...HOME_SERVICES, ...HOME_SERVICES, ...HOME_SERVICES].map((item, i) => (
+                            {[...HOME_SERVICES].map((item, i) => (
                                 <div
                                     key={i}
                                     onClick={() => handleItemClick(item)}
-                                    className={`w-[280px] shrink-0 aspect-[4/3] rounded-2xl overflow-hidden relative transition-all duration-300 shadow-lg cursor-pointer gpu-accelerated ${!isDragging ? "hover:shadow-2xl hover:-translate-y-2" : ""}`}
+                                    className={`w-[280px] shrink-0 aspect-[4/3] rounded-2xl overflow-hidden relative transition-all duration-300 shadow-lg cursor-pointer gpu-accelerated snap-center ${!isDragging ? "hover:shadow-2xl hover:-translate-y-2" : ""}`}
                                 >
                                     <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-110 pointer-events-none transform-gpu" style={{ backgroundImage: `url(${item.image})` }} />
                                 </div>
