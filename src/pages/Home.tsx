@@ -62,6 +62,38 @@ const Home = () => {
     const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
     const [tutorialViewed, setTutorialViewed] = useState(false);
 
+    const [isCleaning, setIsCleaning] = useState(false);
+    const [isClean, setIsClean] = useState(false);
+    const [waterDrops, setWaterDrops] = useState<Array<{ id: number; x: number; y: number; delay: number; size: number }>>([]);
+
+    useEffect(() => {
+        if (isCleaning) {
+            const drops = Array.from({ length: 80 }, (_, i) => ({
+                id: i,
+                x: Math.random() * 55 + 20,   // 20% a 75% horizontal (área do sofá)
+                y: Math.random() * 30 + 32,   // 32% a 62% vertical (corpo do sofá)
+                delay: Math.random() * 2.5,
+                size: Math.random() * 6 + 3,
+            }));
+            setWaterDrops(drops);
+        } else {
+            setWaterDrops([]);
+        }
+    }, [isCleaning]);
+
+    const handleHeroClick = () => {
+        if (isCleaning) return;
+        setIsCleaning(true);
+        // After 1.5 second (halfway through bico animation), swap to clean version
+        setTimeout(() => {
+            setIsClean(true);
+        }, 1500);
+        // Reset cleaning state after animation ends
+        setTimeout(() => {
+            setIsCleaning(false);
+        }, 3000);
+    };
+
     useEffect(() => {
         const fetchUser = async () => {
             const { data: { session } } = await supabase.auth.getSession();
@@ -367,14 +399,51 @@ const Home = () => {
                         </div>
                     </div>
                     <div className="lg:w-1/2 relative flex justify-center lg:justify-end reveal reveal-delay-500">
-                        <div className="relative w-full aspect-square max-w-[600px] hover:scale-[1.02] transition-transform duration-700">
+                        <div className="relative w-full aspect-square transition-transform duration-700">
                             <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-blue-200/40 rounded-full blur-3xl opacity-60"></div>
-                            <div className="relative w-full h-full flex items-center justify-center">
+                            <div
+                                className="relative w-full h-full flex items-center justify-center cursor-pointer group/hero"
+                                onClick={handleHeroClick}
+                            >
+                                {/* The Sofa Image */}
                                 <img
-                                    src="/hero1-png.png"
-                                    alt="Hero Manager Clean"
-                                    className="w-full h-auto max-h-[85%] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] animate-floating"
+                                    src={isClean ? "/sofa-limpo.png" : "/sofa-sujo.png"}
+                                    alt="Sofa Manager Clean"
+                                    className={`w-full h-auto max-h-[100%] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.2)] transition-opacity duration-300`}
                                 />
+
+                                {/* Water drops during cleaning */}
+                                {isCleaning && waterDrops.map(drop => (
+                                    <div
+                                        key={drop.id}
+                                        className="absolute pointer-events-none animate-water-drop rounded-full"
+                                        style={{
+                                            left: `${drop.x}%`,
+                                            top: `${drop.y}%`,
+                                            width: `${drop.size}px`,
+                                            height: `${drop.size * 1.5}px`,
+                                            animationDelay: `${drop.delay}s`,
+                                            background: 'radial-gradient(ellipse at 40% 30%, #60c7f5, #0090cc)',
+                                            boxShadow: '0 0 4px rgba(0,144,204,0.5)',
+                                        }}
+                                    />
+                                ))}
+
+                                {/* The Bico (Vacuum Nozzle) Animation Overlay */}
+                                {isCleaning && (
+                                    <img
+                                        src="/bico.png"
+                                        alt="Cleaning"
+                                        className="absolute z-50 w-52 md:w-72 top-0 left-0 animate-sweep-cleaning pointer-events-none"
+                                    />
+                                )}
+
+                                {/* Hint text */}
+                                {!isClean && !isCleaning && (
+                                    <div className="absolute top-1/3 left-4 bg-primary/90 text-white text-[10px] font-bold px-3 py-1 rounded-full animate-floating uppercase tracking-wider">
+                                        Clique para limpar
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -540,7 +609,7 @@ const Home = () => {
                             {/* Main Image Container */}
                             <div className="relative w-full h-full flex items-center justify-center">
                                 <img
-                                    src="/hero-image.png"
+                                    src="/hero1-png.png"
                                     alt="Higienização profissional"
                                     className="w-[105%] h-auto object-contain relative z-10 drop-shadow-2xl hover:scale-105 transition-transform duration-500 rounded-3xl"
                                 />

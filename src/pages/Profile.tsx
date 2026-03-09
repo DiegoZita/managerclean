@@ -8,8 +8,6 @@ import { toast } from "sonner";
 import Header from "@/components/Header";
 import { supabase } from "@/lib/supabaseClient";
 
-import { useNavigate } from "react-router-dom";
-
 const Profile = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);

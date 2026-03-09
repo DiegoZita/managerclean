@@ -199,4 +199,86 @@
   .animate-floating {
     animation: floating 4s ease-in-out infinite;
   }
+
+  @keyframes sweep {
+    0% {
+      transform: translate(0%, 0%) rotate(45deg);
+      opacity: 0;
+      animation-timing-function: ease-in-out;
+    }
+
+    4% {
+      opacity: 1;
+      animation-timing-function: ease-in-out;
+    }
+
+    /* Curva 1: esquerda → direita, descendo suavemente */
+    12% {
+      transform: translate(40%, 8%) rotate(60deg);
+      animation-timing-function: ease-in-out;
+    }
+
+    24% {
+      transform: translate(100%, 20%) rotate(120deg);
+      animation-timing-function: ease-in-out;
+    }
+
+    /* Curva 2: direita → esquerda, descendo suavemente */
+    36% {
+      transform: translate(60%, 33%) rotate(200deg);
+      animation-timing-function: ease-in-out;
+    }
+
+    48% {
+      transform: translate(0%, 45%) rotate(240deg);
+      animation-timing-function: ease-in-out;
+    }
+
+    /* Curva 3: esquerda → direita, descendo suavemente */
+    60% {
+      transform: translate(40%, 55%) rotate(110deg);
+      animation-timing-function: ease-in-out;
+    }
+
+    72% {
+      transform: translate(100%, 65%) rotate(80deg);
+      animation-timing-function: ease-in-out;
+    }
+
+    /* Saída suave */
+    85% {
+      transform: translate(70%, 78%) rotate(90deg);
+      opacity: 1;
+      animation-timing-function: ease-in;
+    }
+
+    100% {
+      transform: translate(50%, 95%) rotate(90deg);
+      opacity: 0;
+    }
+  }
+
+  .animate-sweep-cleaning {
+    animation: sweep 3.5s linear forwards;
+  }
+
+  @keyframes waterDrop {
+    0% {
+      transform: translateY(0) scaleY(1);
+      opacity: 0.9;
+    }
+
+    60% {
+      opacity: 0.7;
+    }
+
+    100% {
+      transform: translateY(40px) scaleY(1.4);
+      opacity: 0;
+    }
+  }
+
+  .animate-water-drop {
+    animation: waterDrop 0.7s ease-in forwards;
+  }
 }

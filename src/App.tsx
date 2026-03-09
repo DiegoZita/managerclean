@@ -59,6 +59,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
