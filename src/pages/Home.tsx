@@ -117,6 +117,30 @@ const Home = () => {
         return () => cancelAnimationFrame(animationFrameId);
     }, [isHovered, isDragging]);
 
+    useEffect(() => {
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('reveal-visible');
+                    // Once visible, we can stop observing if we only want it once, 
+                    // but user said "whenever returns to home", and typically that means on mount.
+                    // If we want it to re-animate on every scroll up/down, we don't unobserve.
+                    // But standard reveal is usually once per mount.
+                }
+            });
+        }, observerOptions);
+
+        const revealElements = document.querySelectorAll('.reveal');
+        revealElements.forEach(el => observer.observe(el));
+
+        return () => observer.disconnect();
+    }, []);
+
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
         if (!scrollRef.current) return;
         setIsDragging(true);
@@ -293,16 +317,16 @@ const Home = () => {
                 {/* Hero Section */}
                 <section className="container mx-auto px-6 pt-28 pb-32 flex flex-col-reverse lg:flex-row items-center gap-16">
                     <div className="lg:w-1/2 space-y-8 relative z-10">
-                        <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] text-slate-800 tracking-tight">
+                        <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] text-slate-800 tracking-tight reveal">
                             Seu sofá merece <br /> um cuidado <br /> profissional.
                         </h1>
-                        <div className="space-y-4">
+                        <div className="space-y-4 reveal reveal-delay-200">
 
                             <p className="text-slate-500 max-w-md leading-relaxed text-lg">
                                 Deixe seu estofado limpo, cheiroso e renovado com a higienização profissional da Manager Clean.
                             </p>
                         </div>
-                        <div>
+                        <div className="reveal reveal-delay-300">
                             <Button
                                 onClick={() => navigate('/orcamento')}
                                 className="bg-primary hover:bg-primary/90 text-white rounded-full px-10 py-7 text-[15px] font-bold tracking-wide shadow-xl shadow-primary/30 mt-4"
@@ -311,7 +335,7 @@ const Home = () => {
                             </Button>
                         </div>
                     </div>
-                    <div className="lg:w-1/2 relative flex justify-center lg:justify-end">
+                    <div className="lg:w-1/2 relative flex justify-center lg:justify-end reveal reveal-delay-500">
                         <div className="relative w-full aspect-square max-w-[600px] hover:scale-[1.02] transition-transform duration-700">
                             <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-blue-200/40 rounded-full blur-3xl opacity-60"></div>
                             {/* 3D-ish composition of laptops/phones can be mimicked using layered divs */}
@@ -347,13 +371,13 @@ const Home = () => {
 
                 {/* Solutions Grid */}
                 <section id="solutions" className="container mx-auto px-6 py-24 relative z-10">
-                    <div className="mb-16 max-w-3xl">
+                    <div className="mb-16 max-w-3xl reveal">
                         <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-4">Soluções Completas em Higienização</h2>
                         <p className="text-slate-500 text-lg leading-relaxed">
                             Conheça nossos serviços profissionais para estofados, veículos e ambientes, garantindo mais limpeza, proteção e bem-estar para o seu dia a dia.
                         </p>
                     </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16 reveal reveal-delay-200">
                         {[
                             { imageIcon: "/spray-icon.png", title: "Higienização", desc: "Limpeza profunda que remove sujeiras, ácaros, bactérias e odores de sofás, colchões e poltronas, deixando o estofado renovado e mais higienizado." },
                             { imageIcon: "/impermeabilizacao-icon.png", title: "Impermeabilização", desc: "Proteção contra líquidos e manchas, criando uma barreira no tecido que aumenta a durabilidade e facilita a limpeza do estofado." },
@@ -392,11 +416,11 @@ const Home = () => {
                 <section className="bg-primary py-12 relative px-6 z-10 w-full">
                     <div className="container mx-auto">
 
-                        <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-8">Fácil, Rápido e Seguro!</h2>
+                        <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-8 reveal">Fácil, Rápido e Seguro!</h2>
 
                         <div className="grid md:grid-cols-2 gap-8">
                             {/* Enhanced Mockup Image Area */}
-                            <div className="flex items-center justify-center relative group py-6 mt-0">
+                            <div className="flex items-center justify-center relative group py-6 mt-0 reveal reveal-delay-200">
                                 {/* Background Design Elements */}
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-white/20 rounded-full blur-3xl group-hover:bg-primary/30 transition-colors duration-700"></div>
                                 <div className="absolute top-[20%] left-[20%] w-4 h-4 rounded-full bg-white/40 blur-[1px] animate-pulse"></div>
@@ -409,7 +433,7 @@ const Home = () => {
                                 />
                             </div>
 
-                            <div className="space-y-6">
+                            <div className="space-y-6 reveal reveal-delay-400">
                                 {/* Card 1 - Cyan */}
                                 <div className="bg-cyan-600/50 backdrop-blur-md border border-cyan-400/30 p-8 rounded-2xl text-white hover:bg-cyan-600/70 transition-colors">
                                     <div className="flex flex-col sm:flex-row gap-5 items-start">
@@ -465,14 +489,14 @@ const Home = () => {
 
                 {/* About Us */}
                 <section id="about" className="container mx-auto px-6 py-24 flex flex-col md:flex-row items-center gap-16 relative z-10 w-full mt-[-60px]">
-                    <div className="md:w-[45%]">
+                    <div className="md:w-[45%] reveal">
                         <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-8">Sobre Nós</h2>
                         <div className="text-slate-500 mb-10 leading-relaxed text-[15px] space-y-4">
                             <p>A Manager Clean é uma empresa especializada em higienização e impermeabilização de estofados, oferecendo soluções profissionais para quem busca mais limpeza, conforto e saúde dentro de casa ou no ambiente de trabalho.</p>
                             <p>Nosso trabalho vai muito além de uma limpeza superficial. Utilizamos equipamentos profissionais e produtos específicos para cada tipo de tecido, garantindo uma higienização profunda capaz de remover sujeiras acumuladas, ácaros, bactérias e odores indesejados.</p>
                             <p>Nosso compromisso é entregar um serviço de alta qualidade, com atenção aos detalhes, cuidado com o ambiente do cliente e total transparência no atendimento.</p>
                         </div>
-                        <div className="mb-10 pl-6 border-l-2 border-primary">
+                        <div className="mb-10 pl-6 border-l-2 border-primary reveal reveal-delay-200">
                             <h3 className="font-extrabold text-sm mb-4 text-slate-700 tracking-wider">NOSSOS VALORES</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-4 text-slate-600 text-[14px] font-medium">
                                 <ul className="space-y-3">
@@ -491,7 +515,7 @@ const Home = () => {
                             SABER MAIS
                         </Button>
                     </div>
-                    <div className="md:w-[55%] flex justify-center mt-12 md:mt-0 relative">
+                    <div className="md:w-[55%] flex justify-center mt-12 md:mt-0 relative reveal reveal-delay-300">
                         <div className="absolute inset-0 bg-blue-50 rounded-full blur-3xl scale-75 opacity-70"></div>
                         {/* Highlights Image */}
                         <div className="relative w-full aspect-square max-w-[650px] scale-110 lg:scale-[1.15]">
@@ -516,7 +540,7 @@ const Home = () => {
 
                 {/* Services Grid */}
                 <section id="services" className="bg-slate-50 py-32 mt-12 relative">
-                    <div className="container mx-auto px-6 mb-16">
+                    <div className="container mx-auto px-6 mb-16 reveal">
                         <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-4">Serviços</h2>
                         <p className="text-slate-500 max-w-2xl leading-relaxed text-[15px] mb-6">
                             A higienização de estofados vai muito além da limpeza superficial. Nosso processo remove sujeira profunda, elimina odores e devolve o aspecto renovado ao tecido.
@@ -526,7 +550,7 @@ const Home = () => {
                         </Button>
                     </div>
 
-                    <div className="w-full relative overflow-hidden group py-8 -mt-8">
+                    <div className="w-full relative overflow-hidden group py-8 -mt-8 reveal reveal-delay-200">
 
                         <div
                             ref={scrollRef}
@@ -575,7 +599,7 @@ const Home = () => {
                 {/* Footer */}
                 <footer id="contact" className="bg-white pt-24 pb-12 w-full">
                     <div className="container mx-auto px-6 flex flex-col lg:flex-row items-center justify-between gap-12 border-b border-slate-100 pb-16">
-                        <div className="lg:w-1/2 text-center lg:text-left">
+                        <div className="lg:w-1/2 text-center lg:text-left reveal">
 
                             <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 mb-8">
                                 Tem alguma <span className="text-primary italic">dúvida</span> ou pergunta?
@@ -585,7 +609,7 @@ const Home = () => {
                             </Button>
                         </div>
 
-                        <div className="lg:w-1/3 text-center lg:text-right space-y-4">
+                        <div className="lg:w-1/3 text-center lg:text-right space-y-4 reveal reveal-delay-300">
                             <a href="mailto:contato@managerclean.com.br" className="block text-xl md:text-2xl font-bold text-slate-700 hover:text-primary transition-colors">contato@managerclean.com.br</a>
                             <a href="tel:+5511944816323" className="block text-lg font-bold text-primary">+55 11 94481-6323</a>
 
