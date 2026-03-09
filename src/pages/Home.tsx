@@ -372,7 +372,7 @@ const Home = () => {
                                     onClick={() => { navigate('/orcamento'); setIsMenuOpen(false); }}
                                     className="bg-white text-primary hover:bg-slate-50 rounded-full px-6 py-4 text-[13px] font-extrabold tracking-wide uppercase shadow-lg shadow-black/10"
                                 >
-                                    ORÇAMENTO
+                                    SOLICITAR
                                 </Button>
                             </nav>
                         </div>
@@ -397,7 +397,7 @@ const Home = () => {
                                 Deixe seu estofado limpo, cheiroso e renovado com a higienização profissional da Manager Clean.
                             </p>
                         </div>
-                        <div className="reveal reveal-delay-300">
+                        <div className="reveal reveal-delay-300 relative z-20">
                             <Button
                                 onClick={() => navigate('/orcamento')}
                                 className="bg-primary hover:bg-primary/90 text-white rounded-full px-10 py-7 text-[15px] font-bold tracking-wide shadow-xl shadow-primary/30 mt-4"
