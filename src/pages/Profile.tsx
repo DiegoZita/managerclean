@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import Header from "@/components/Header";
 import { supabase } from "@/lib/supabaseClient";
 
-const Profile = () => {
+const Profile = ({ forced = false }: { forced?: boolean }) => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const numberInputRef = useRef<HTMLInputElement>(null);
@@ -211,14 +211,18 @@ const Profile = () => {
 
     return (
         <div className="min-h-screen bg-background">
-            <Header cartCount={0} onCartToggle={() => { }} hideCart={true} />
+            {!forced && <Header cartCount={0} onCartToggle={() => { }} hideCart={true} />}
 
-            <div className="container mx-auto px-4 py-12">
+            <div className={`container mx-auto px-4 ${forced ? 'py-6' : 'py-12'}`}>
                 <Card className="mx-auto w-full max-w-2xl border-border shadow-lg">
                     <CardHeader>
-                        <CardTitle className="text-2xl font-bold text-foreground">Perfil do Cliente</CardTitle>
+                        <CardTitle className="text-2xl font-bold text-foreground">
+                            {forced ? "Conclua seu Cadastro" : "Perfil do Cliente"}
+                        </CardTitle>
                         <CardDescription>
-                            Mantenha seus dados atualizados para facilitar seus agendamentos
+                            {forced
+                                ? "Para continuar navegando, precisamos que preencha seus dados de contato e endereço."
+                                : "Mantenha seus dados atualizados para facilitar seus agendamentos"}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -383,8 +387,19 @@ const Profile = () => {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex justify-end gap-4 border-t border-border pt-6">
-                        <Button onClick={handleSave} className="bg-primary text-primary-foreground px-8 w-full sm:w-auto">Salvar Perfil</Button>
+                    <CardFooter className="flex flex-col sm:flex-row justify-end gap-4 border-t border-border pt-6">
+                        {forced && (
+                            <Button
+                                variant="ghost"
+                                onClick={() => supabase.auth.signOut()}
+                                className="w-full sm:w-auto"
+                            >
+                                Sair e cancelar
+                            </Button>
+                        )}
+                        <Button onClick={handleSave} className="bg-primary text-primary-foreground px-8 w-full sm:w-auto">
+                            Salvar e Continuar
+                        </Button>
                     </CardFooter>
                 </Card>
             </div>

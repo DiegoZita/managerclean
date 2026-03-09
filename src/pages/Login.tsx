@@ -70,8 +70,8 @@ const Login = () => {
                     }
                 }
 
-                toast.success("Conta criada! Verifique seu e-mail para confirmar.");
-                setIsRegistering(false);
+                toast.success("Conta criada! Por favor, complete seu perfil.");
+                navigate("/profile");
             } else {
                 if (!formData.email || !formData.password) {
                     toast.error("Por favor, preencha email e senha");
