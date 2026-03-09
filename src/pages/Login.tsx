@@ -116,16 +116,22 @@ const Login = () => {
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                autoComplete="off"
-                                autoCorrect="off"
-                                spellCheck="false"
-                                className="border-border"
-                            />
+                            <div className="relative">
+                                {/* Hidden input to trick autofill mechanisms on iOS */}
+                                <input type="text" style={{ display: 'none' }} aria-hidden="true" />
+                                <Input
+                                    id="email"
+                                    type="text"
+                                    name="user_email_no_suggest"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    autoComplete="new-password"
+                                    autoCorrect="off"
+                                    autoCapitalize="none"
+                                    spellCheck="false"
+                                    className="border-border"
+                                />
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="password">Senha</Label>
@@ -133,9 +139,12 @@ const Login = () => {
                                 <Input
                                     id="password"
                                     type={showPassword ? "text" : "password"}
+                                    name="user_password_no_suggest"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    autoComplete="off"
+                                    autoComplete="new-password"
+                                    autoCorrect="off"
+                                    autoCapitalize="none"
                                     className="border-border pr-10"
                                 />
                                 <button
