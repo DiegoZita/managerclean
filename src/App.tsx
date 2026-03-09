@@ -113,7 +113,7 @@ const GlobalGuard = ({ children }: { children: React.ReactNode }) => {
   if (!session?.user) {
     const publicPaths = ['/', '/login', '/forgot-password', '/reset-password', '/blog'];
     if (!publicPaths.includes(path)) {
-      return <Navigate to="/login" replace />;
+      return <Navigate to="/login" state={{ from: location }} replace />;
     }
   }
 

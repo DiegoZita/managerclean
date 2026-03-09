@@ -1,6 +1,6 @@
 import { ShoppingCart, User, LogOut, Settings, Package, Menu, X } from "lucide-react";
 import logo from "@/assets/logo-manager-clean.png";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ interface HeaderProps {
 
 const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = false }: HeaderProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [userData, setUserData] = useState<{ name?: string; email?: string } | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -186,7 +187,7 @@ const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = fal
                     </DropdownMenuItem>
                   </>
                 ) : (
-                  <DropdownMenuItem onClick={() => navigate("/login")}>
+                  <DropdownMenuItem onClick={() => navigate("/login", { state: { from: location.pathname } })}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Fazer Login</span>
                   </DropdownMenuItem>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "@/assets/logo-manager-clean.png";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabaseClient";
@@ -21,6 +21,9 @@ const Login = () => {
     });
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
+
+    const from = (location.state as any)?.from || "/";
 
     const maskPhone = (value: string) => {
         const numbers = value.replace(/\D/g, "");
@@ -86,7 +89,7 @@ const Login = () => {
                 if (error) throw error;
 
                 toast.success("Login realizado com sucesso!");
-                navigate("/");
+                navigate(from, { replace: true });
             }
         } catch (error: any) {
             toast.error(error.message || "Ocorreu um erro na autenticação");
