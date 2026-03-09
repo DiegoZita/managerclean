@@ -121,6 +121,9 @@ const Login = () => {
                                 type="email"
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck="false"
                                 className="border-border"
                             />
                         </div>
@@ -132,6 +135,7 @@ const Login = () => {
                                     type={showPassword ? "text" : "password"}
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    autoComplete="off"
                                     className="border-border pr-10"
                                 />
                                 <button
