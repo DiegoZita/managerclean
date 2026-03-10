@@ -2,7 +2,7 @@ export interface ServiceItem {
   id: string;
   name: string;
   icon: string;
-  category: "casa" | "empresa" | "outros";
+  category: "casa" | "empresa" | "outros" | "orcamento_pdf";
   order_index?: number;
 
   /**
@@ -21,8 +21,12 @@ export interface ServiceItem {
   /** Additive: each service type adds its price on top */
   types?: { name: string; price: number }[];
 
-  /** Additive/Multiplier: Like models, but named Adicional */
-  adicionais?: { name: string; price: number }[];
+  /** Additive/Multiplier: Multiple groups of adicionales */
+  adicionais?: {
+    title: string;
+    is_multiplier: boolean;
+    items: { name: string; price: number }[];
+  }[];
 
   /** Additive: each selected addon adds its price */
   addons?: { name: string; price: number }[];
@@ -40,7 +44,6 @@ export interface ServiceItem {
     models: boolean;
     models_is_multiplier?: boolean;
     adicionais: boolean;
-    adicionais_is_multiplier?: boolean;
     materials: boolean;
     types: boolean;
     addons: boolean;

@@ -274,7 +274,7 @@ const Home = () => {
                 {/* Navbar with Wave */}
                 <div className="fixed top-0 left-0 w-full bg-primary z-50 shadow-md">
                     <header className="container mx-auto px-6 py-[15px] flex items-center justify-between">
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => { navigate('/'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                             <img src={logo} alt="Logo" className="h-[40px] md:h-[50px] object-contain drop-shadow-sm" />
                         </div>
                         <div className="flex items-center gap-4">
@@ -304,7 +304,7 @@ const Home = () => {
                                             )}
                                         </button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                                    <DropdownMenuContent className="w-56 z-[1010]" align="end" forceMount>
                                         {userData ? (
                                             <>
                                                 <DropdownMenuLabel className="font-normal">
@@ -599,9 +599,7 @@ const Home = () => {
                                 </ul>
                             </div>
                         </div>
-                        <Button className="bg-primary hover:bg-primary/90 text-white rounded-full px-10 py-6 text-[13px] font-bold tracking-wider shadow-lg shadow-primary/30">
-                            SABER MAIS
-                        </Button>
+
                     </div>
                     <div className="md:w-[55%] flex justify-center mt-8 md:mt-0 relative reveal reveal-delay-300">
                         <div className="absolute inset-0 bg-blue-50 rounded-full blur-3xl scale-75 opacity-70"></div>
@@ -633,8 +631,11 @@ const Home = () => {
                         <p className="text-slate-500 max-w-2xl leading-relaxed text-[15px] mb-6">
                             A higienização de estofados vai muito além da limpeza superficial. Nosso processo remove sujeira profunda, elimina odores e devolve o aspecto renovado ao tecido.
                         </p>
-                        <Button className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 py-6 text-[13px] font-bold tracking-wider shadow-lg shadow-primary/30">
-                            CUIDADOS
+                        <Button
+                            onClick={() => { navigate('/blog'); window.scrollTo(0, 0); }}
+                            className="bg-primary hover:bg-primary/90 text-white rounded-full px-8 py-6 text-[13px] font-bold tracking-wider shadow-lg shadow-primary/30"
+                        >
+                            DICAS
                         </Button>
                     </div>
 

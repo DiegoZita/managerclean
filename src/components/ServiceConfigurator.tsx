@@ -47,12 +47,25 @@ const ServiceConfigurator = ({
     models: true,
     models_is_multiplier: false,
     adicionais: false,
-    adicionais_is_multiplier: false,
     materials: true,
     types: true,
     addons: true,
     frequency: true,
   };
+
+  const normalizedAdicionais = useMemo(() => {
+    if (!hasAdicionais) return [];
+    const ads = service.adicionais as any;
+    if (ads && ads.length > 0 && ads[0].items) {
+      return ads as { title: string; is_multiplier: boolean; items: { name: string; price: number }[] }[];
+    }
+    // Migration for old data (flat array of items)
+    return [{
+      title: "Adicional",
+      is_multiplier: !!(vis as any).adicionais_is_multiplier,
+      items: ads
+    }];
+  }, [service.adicionais, hasAdicionais, vis]);
 
   // ─── Selections ─────────────────────────────────────────────────────────────
   const [seats, setSeats] = useState<number>(0);
@@ -63,7 +76,7 @@ const ServiceConfigurator = ({
   const [m2Length, setM2Length] = useState<number>(0);
 
   const [selectedModel, setSelectedModel] = useState<string>("");
-  const [selectedAdicional, setSelectedAdicional] = useState<string>("");
+  const [selectedAdicionais, setSelectedAdicionais] = useState<Record<number, string>>({});
   const [selectedMaterial, setSelectedMaterial] = useState<string>("");
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedAddonNames, setSelectedAddonNames] = useState<Set<string>>(new Set());
@@ -74,20 +87,32 @@ const ServiceConfigurator = ({
     if (vis.seats && hasSeatPrices && seats === 0) return false;
     if (vis.m2 && hasM2Prices && (m2Width * m2Length === 0)) return false;
     if (vis.models && hasModels && !selectedModel) return false;
-    if (vis.adicionais && hasAdicionais && !selectedAdicional) return false;
+    if (vis.adicionais && hasAdicionais) {
+      const allSelected = normalizedAdicionais.every((group, idx) => {
+        if (group.items.length === 0) return true;
+        return !!selectedAdicionais[idx];
+      });
+      if (!allSelected) return false;
+    }
     if (vis.materials && effectiveMaterials.length > 0 && !selectedMaterial) return false;
     if (vis.types && hasTypes && !selectedType) return false;
     return true;
-  }, [vis, hasSeatPrices, seats, hasM2Prices, m2Width, m2Length, hasModels, selectedModel, hasAdicionais, selectedAdicional, effectiveMaterials.length, selectedMaterial, hasTypes, selectedType]);
+  }, [vis, hasSeatPrices, seats, hasM2Prices, m2Width, m2Length, hasModels, selectedModel, hasAdicionais, selectedAdicionais, effectiveMaterials.length, selectedMaterial, hasTypes, selectedType, normalizedAdicionais]);
 
   const isConfigCompleteForType = useMemo(() => {
     if (vis.seats && hasSeatPrices && seats === 0) return false;
     if (vis.m2 && hasM2Prices && (m2Width * m2Length === 0)) return false;
     if (vis.models && hasModels && !selectedModel) return false;
-    if (vis.adicionais && hasAdicionais && !selectedAdicional) return false;
+    if (vis.adicionais && hasAdicionais) {
+      const allSelected = normalizedAdicionais.every((group, idx) => {
+        if (group.items.length === 0) return true;
+        return !!selectedAdicionais[idx];
+      });
+      if (!allSelected) return false;
+    }
     if (vis.materials && effectiveMaterials.length > 0 && !selectedMaterial) return false;
     return true;
-  }, [vis, hasSeatPrices, seats, hasM2Prices, m2Width, m2Length, hasModels, selectedModel, hasAdicionais, selectedAdicional, effectiveMaterials.length, selectedMaterial]);
+  }, [vis, hasSeatPrices, seats, hasM2Prices, m2Width, m2Length, hasModels, selectedModel, hasAdicionais, selectedAdicionais, effectiveMaterials.length, selectedMaterial, normalizedAdicionais]);
 
   // ─── PRICING ENGINE ───────────────────────────────────────────────────────
   const pricing = useMemo(() => {
@@ -119,18 +144,23 @@ const ServiceConfigurator = ({
       }
     }
 
-    // 2(b). Adicional category (Multiplier or Additive)
-    let adicionalMultiplier = 1;
-    let adicionalAdd = 0;
-    if (vis?.adicionais && hasAdicionais && selectedAdicional) {
-      const ads = service.adicionais!.find((a) => a.name === selectedAdicional);
-      if (ads) {
-        if (vis.adicionais_is_multiplier) {
-          adicionalMultiplier = ads.price;
-        } else {
-          adicionalAdd = ads.price;
+    // 2(b). Adicionais groups (Multiplier and Additive)
+    let totalAdicionalMultiplier = 1;
+    let totalAdicionalAdd = 0;
+    if (vis?.adicionais && hasAdicionais) {
+      normalizedAdicionais.forEach((group, idx) => {
+        const selection = selectedAdicionais[idx];
+        if (selection) {
+          const item = group.items.find((i) => i.name === selection);
+          if (item) {
+            if (group.is_multiplier) {
+              totalAdicionalMultiplier *= item.price;
+            } else {
+              totalAdicionalAdd += item.price;
+            }
+          }
         }
-      }
+      });
     }
 
     // 3. Material additional (Fixed)
@@ -152,7 +182,7 @@ const ServiceConfigurator = ({
 
     // 6. Subtotal (before discount)
     // Formula: (Base + MaterialFix + ModelFix + AdicionalFix) * ModelMult * AdicionalMult * TypeMult + Addons Fixos
-    const subtotal = ((basePrice + materialAdd + modelAdd + adicionalAdd) * modelMultiplier * adicionalMultiplier * typeMultiplier) + addonsAdd;
+    const subtotal = ((basePrice + materialAdd + modelAdd + totalAdicionalAdd) * modelMultiplier * totalAdicionalMultiplier * typeMultiplier) + addonsAdd;
 
     // 7. Frequency discount
     const discountPct =
@@ -172,8 +202,8 @@ const ServiceConfigurator = ({
       totalAreaM2,
       modelMultiplier,
       modelAdd,
-      adicionalMultiplier,
-      adicionalAdd,
+      adicionalMultiplier: totalAdicionalMultiplier,
+      adicionalAdd: totalAdicionalAdd,
       materialAdd,
       typeMultiplier,
       addonsAdd,
@@ -184,10 +214,10 @@ const ServiceConfigurator = ({
     };
   }, [
     seats, m2Width, m2Length, selectedM2Price,
-    selectedModel, selectedAdicional, selectedMaterial, selectedType,
+    selectedModel, selectedMaterial, selectedType,
     selectedAddonNames, frequency,
     hasSeatPrices, hasM2Prices, hasModels, hasAdicionais, hasTypes, hasAddons,
-    service, effectiveMaterials, vis
+    service, effectiveMaterials, vis, selectedAdicionais, normalizedAdicionais
   ]);
 
   useEffect(() => {
@@ -210,7 +240,13 @@ const ServiceConfigurator = ({
     if (vis.seats && hasSeatPrices) details += ` - ${seats} lugares`;
     if (vis.m2 && hasM2Prices) details += ` - ${pricing.totalAreaM2.toFixed(2)}m²`;
     if (vis.models && selectedModel) details += ` - ${selectedModel}`;
-    if (vis.adicionais && selectedAdicional) details += ` - ${selectedAdicional}`;
+    if (vis.adicionais && Object.keys(selectedAdicionais).length > 0) {
+      const adsDetails = normalizedAdicionais
+        .map((g, i) => selectedAdicionais[i])
+        .filter(Boolean)
+        .join(", ");
+      if (adsDetails) details += ` - ${adsDetails}`;
+    }
     if (vis.materials) details += ` - ${selectedMaterial}`;
     if (vis.types && selectedType) details += ` - ${selectedType}`;
     if (vis.frequency && frequency !== "Única vez") details += ` (${frequency})`;
@@ -333,27 +369,33 @@ const ServiceConfigurator = ({
           </div>
         )}
 
-        {/* ── Adicional ─────────────────────────────────────────── */}
+        {/* ── Adicionais Customizados ─────────────────────────── */}
         {vis.adicionais && hasAdicionais && (
-          <div className="space-y-3">
-            <h3 className="font-semibold text-sm text-foreground">Adicional</h3>
-            <div className="flex flex-wrap gap-2">
-              {service.adicionais!.map((item) => {
-                const isSelected = selectedAdicional === item.name;
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => setSelectedAdicional(item.name)}
-                    className={`px-4 py-2 rounded-full border text-sm transition-colors flex items-center gap-1.5 ${isSelected
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "border-border text-foreground hover:border-primary"
-                      }`}
-                  >
-                    <span>{item.name}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="space-y-6">
+            {normalizedAdicionais.map((group, groupIdx) => (
+              <div key={groupIdx} className="space-y-3">
+                <h3 className="font-semibold text-sm text-foreground">
+                  {group.title || "Adicional"}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {group.items.map((item) => {
+                    const isSelected = selectedAdicionais[groupIdx] === item.name;
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => setSelectedAdicionais(prev => ({ ...prev, [groupIdx]: item.name }))}
+                        className={`px-4 py-2 rounded-full border text-sm transition-colors flex items-center gap-1.5 ${isSelected
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "border-border text-foreground hover:border-primary"
+                          }`}
+                      >
+                        <span>{item.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -397,9 +439,9 @@ const ServiceConfigurator = ({
                   const isSelected = selectedType === type.name;
                   const typeMult = type.price || 1;
                   // Projeta o preço já multiplicando pelo tipo e modelo
-                  const projectedPrice = ((pricing.basePrice + pricing.materialAdd + pricing.modelAdd + pricing.adicionalAdd) * pricing.modelMultiplier * pricing.adicionalMultiplier * typeMult) + pricing.addonsAdd;
                   const currentBaseWithModel = (pricing.basePrice + pricing.materialAdd + pricing.modelAdd + pricing.adicionalAdd) * pricing.modelMultiplier * pricing.adicionalMultiplier;
                   const aditionalPrice = (currentBaseWithModel * typeMult) - currentBaseWithModel;
+                  const projectedPrice = (currentBaseWithModel * typeMult) + pricing.addonsAdd;
 
                   return (
                     <div
@@ -552,12 +594,12 @@ const ServiceConfigurator = ({
           <div className="rounded-xl bg-muted/40 p-3 space-y-1.5 text-xs">
             {vis.seats && seats > 0 && (
               <div className="text-muted-foreground">
-                <span>{service.name}{vis.models && selectedModel ? ` - ${selectedModel}` : ""}{vis.adicionais && selectedAdicional ? ` - ${selectedAdicional}` : ""} de {seats} lugares</span>
+                <span>{service.name}{vis.models && selectedModel ? ` - ${selectedModel}` : ""}{vis.adicionais && Object.keys(selectedAdicionais).length > 0 ? ` - ${Object.values(selectedAdicionais).join(', ')}` : ""} de {seats} lugares</span>
               </div>
             )}
             {vis.m2 && pricing.totalAreaM2 > 0 && (
               <div className="text-muted-foreground">
-                <span>{service.name}{vis.models && selectedModel ? ` - ${selectedModel}` : ""}{vis.adicionais && selectedAdicional ? ` - ${selectedAdicional}` : ""} ({pricing.totalAreaM2.toFixed(2)} m²)</span>
+                <span>{service.name}{vis.models && selectedModel ? ` - ${selectedModel}` : ""}{vis.adicionais && Object.keys(selectedAdicionais).length > 0 ? ` - ${Object.values(selectedAdicionais).join(', ')}` : ""} ({pricing.totalAreaM2.toFixed(2)} m²)</span>
               </div>
             )}
             {vis.types && selectedType && (

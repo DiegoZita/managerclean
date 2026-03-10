@@ -149,7 +149,7 @@ const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = fal
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-56 z-[1010]" align="end" forceMount>
                 {userData ? (
                   <>
                     <DropdownMenuLabel className="font-normal">

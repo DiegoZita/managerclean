@@ -84,7 +84,8 @@ export default function Blog() {
 
     // Header cart state mock (since it's a static view for now)
     const [cartCount] = useState(0);
-    const [articles, setArticles] = useState<any[]>(ARTICLES);
+    const [articles, setArticles] = useState<any[]>([]);
+    const [isLoadingArticles, setIsLoadingArticles] = useState(true);
 
     // Comments state
     const [comments, setComments] = useState<any[]>([]);
@@ -230,20 +231,19 @@ export default function Blog() {
     }, []);
 
     const fetchArticles = async () => {
+        setIsLoadingArticles(true);
         const { data, error } = await supabase
             .from("blog_posts")
             .select("*")
             .order("created_at", { ascending: false });
 
-        if (!error && data) {
-            if (data.length > 0) {
-                // Se temos artigos no banco, mostramos apenas eles
-                setArticles(data);
-            } else {
-                // Se o banco estiver vazio, mostramos os mocks como fallback
-                setArticles(ARTICLES);
-            }
+        if (!error && data && data.length > 0) {
+            setArticles(data);
+        } else if (!error) {
+            // banco vazio - não mostra mock, deixa vazio
+            setArticles([]);
         }
+        setIsLoadingArticles(false);
     };
 
     const filteredArticles = articles.filter(art => {
@@ -260,7 +260,9 @@ export default function Blog() {
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800">
             {/* Using the standard Header but wrapped with some extra spacing if needed */}
-            <Header cartCount={0} onCartToggle={() => { }} hideCart={true} />
+            <div className="sticky top-0 z-[100] w-full">
+                <Header cartCount={0} onCartToggle={() => { }} hideCart={true} />
+            </div>
 
             {/* Blog Hero Container */}
             <div className="bg-primary relative overflow-hidden text-white pt-10 pb-20 mt-[-1px]">
@@ -312,7 +314,11 @@ export default function Blog() {
                     ))}
                 </div>
 
-                {filteredArticles.length === 0 ? (
+                {isLoadingArticles ? (
+                    <div className="flex justify-center items-center py-24">
+                        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : filteredArticles.length === 0 ? (
                     <div className="text-center py-20 text-slate-500">
                         <BookOpen className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                         <h3 className="text-2xl font-bold mb-2">Nenhum artigo encontrado</h3>
@@ -467,8 +473,8 @@ export default function Blog() {
             {/* Modal de Artigo Fullscreen */}
             <Dialog.Root open={!!selectedArticle} onOpenChange={(open) => !open && setSelectedArticle(null)}>
                 <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300" />
-                    <Dialog.Content className="fixed inset-0 z-[100] bg-white overflow-y-auto outline-none animate-in zoom-in-95 duration-300 flex flex-col">
+                    <Dialog.Overlay className="fixed inset-0 z-[1050] bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300" />
+                    <Dialog.Content className="fixed inset-0 z-[1050] bg-white overflow-y-auto outline-none animate-in zoom-in-95 duration-300 flex flex-col">
                         {selectedArticle && (
                             <div className="relative flex flex-col min-h-full">
                                 <button

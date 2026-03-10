@@ -15,10 +15,9 @@ import { toast } from "sonner";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<"casa" | "empresa">("casa");
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const savedCart = localStorage.getItem("drLavatudoCart");
-    return savedCart ? JSON.parse(savedCart) : [];
-  });
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartKey, setCartKey] = useState<string>("managerCleanCart_guest");
+  const [isInitializingCart, setIsInitializingCart] = useState(true);
   const [showCart, setShowCart] = useState(true);
   const [selectedServiceForConfig, setSelectedServiceForConfig] =
     useState<ServiceItem | null>(null);
@@ -65,7 +64,9 @@ const Index = () => {
     };
 
     const fetchUserProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+
       if (user) {
         setCurrentUser(user);
         const { data } = await supabase
@@ -75,15 +76,46 @@ const Index = () => {
           .single();
         if (data) setUserProfile(data);
       }
+
+      // Definir a chave do carrinho baseada no usuário
+      const key = user ? `managerCleanCart_${user.id}` : "managerCleanCart_guest";
+      setCartKey(key);
+
+      // Carregar carrinho
+      const savedCart = localStorage.getItem(key);
+      if (savedCart) {
+        setCart(JSON.parse(savedCart));
+      } else {
+        setCart([]);
+      }
+      setIsInitializingCart(false);
     };
 
     fetchServices();
     fetchUserProfile();
+
+    // Ouvir mudanças de autenticação para atualizar o carrinho
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user || null;
+      setCurrentUser(user);
+
+      const key = user ? `managerCleanCart_${user.id}` : "managerCleanCart_guest";
+      setCartKey(key);
+
+      const savedCart = localStorage.getItem(key);
+      setCart(savedCart ? JSON.parse(savedCart) : []);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("drLavatudoCart", JSON.stringify(cart));
-  }, [cart]);
+    if (!isInitializingCart) {
+      localStorage.setItem(cartKey, JSON.stringify(cart));
+    }
+  }, [cart, cartKey, isInitializingCart]);
 
   const openConfigurator = (service: ServiceItem) => {
     setSelectedServiceForConfig(service);
@@ -112,6 +144,18 @@ const Index = () => {
     setSelectedServiceForConfig(null);
     setShowCart(true); // Show cart again after adding
     toast.success("Serviço adicionado ao carrinho!");
+  };
+
+  const refreshUserProfile = async (userId?: string) => {
+    const id = userId || currentUser?.id;
+    if (id) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (data) setUserProfile(data);
+    }
   };
 
   const updateQuantity = (index: number, delta: number) => {
@@ -199,11 +243,13 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-foreground selection:bg-primary/20">
-      <Header
-        cartCount={totalItems}
-        onCartToggle={() => setShowCart(!showCart)}
-        hideOrcamento={true}
-      />
+      <div className="sticky top-0 z-[100] w-full">
+        <Header
+          cartCount={totalItems}
+          onCartToggle={() => setShowCart(!showCart)}
+          hideOrcamento={true}
+        />
+      </div>
 
       <div className="container mx-auto px-6 py-12">
         <div className="text-center mb-12 relative z-10 pt-4">
@@ -302,7 +348,7 @@ const Index = () => {
 
         {/* Mobile/Tablet Cart Drawer - Only open if isMobile to avoid desktop override shadow */}
         <Sheet open={isMobile && showCart} onOpenChange={setShowCart}>
-          <SheetContent side="right" className="w-full sm:max-w-md p-0 lg:hidden border-l-0 z-[100]">
+          <SheetContent side="right" className="w-full sm:max-w-md p-0 lg:hidden border-l-0 z-[1050]">
             <div className="h-full flex flex-col bg-slate-50">
               <div className="p-6 border-b bg-white">
                 <SheetHeader>
@@ -335,8 +381,8 @@ const Index = () => {
         }}
       >
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" />
-          <Dialog.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] bg-background p-0 rounded-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 outline-none h-[90vh]">
+          <Dialog.Overlay className="fixed inset-0 z-[1050] bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" />
+          <Dialog.Content className="fixed left-[50%] top-[50%] z-[1050] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] bg-background p-0 rounded-xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 outline-none h-[90vh]">
             {selectedServiceForConfig && (
               <ServiceConfigurator
                 service={selectedServiceForConfig}
@@ -357,8 +403,8 @@ const Index = () => {
         onOpenChange={(open) => !open && setCheckoutStep(null)}
       >
         <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" />
-          <Dialog.Content className={`fixed left-[50%] ${checkoutStep ? 'top-0 h-full max-h-none rounded-none' : 'top-[50%] translate-y-[-50%] rounded-xl max-h-[90vh]'} z-50 w-[95vw] ${checkoutStep ? 'max-w-[480px]' : 'max-w-lg'} translate-x-[-50%] bg-background p-0 shadow-2xl animate-in zoom-in-95 duration-300 outline-none overflow-hidden transition-all ease-in-out`}>
+          <Dialog.Overlay className="fixed inset-0 z-[1050] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" />
+          <Dialog.Content className={`fixed left-[50%] ${checkoutStep ? 'top-0 h-full max-h-none rounded-none' : 'top-[50%] translate-y-[-50%] rounded-xl max-h-[90vh]'} z-[1050] w-[95vw] ${checkoutStep ? 'max-w-[480px]' : 'max-w-lg'} translate-x-[-50%] bg-background p-0 shadow-2xl animate-in zoom-in-95 duration-300 outline-none overflow-hidden transition-all ease-in-out`}>
             <div className={`relative w-full h-full overflow-y-auto p-0`}>
               {checkoutStep === "scheduling" && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-300">
@@ -374,6 +420,7 @@ const Index = () => {
                     onBack={handleBackToScheduling}
                     onAdvance={handleAdvanceToReview}
                     customerData={customerData}
+                    onProfileUpdate={refreshUserProfile}
                   />
                 </div>
               )}

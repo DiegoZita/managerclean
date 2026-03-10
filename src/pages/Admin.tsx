@@ -39,7 +39,19 @@ import {
   AlignRight,
   Layout,
   Check,
-  Search
+  Search,
+  Printer,
+  Download,
+  Settings,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  PieChart,
+  ArrowUpRight,
+  ArrowDownRight,
+  AlertCircle,
+  Filter,
+  MoreHorizontal
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -57,7 +69,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type AdminView = "dashboard" | "services" | "orders" | "clients" | "blog";
+type AdminView = "dashboard" | "services" | "orders" | "clients" | "blog" | "orcamento_pdf" | "management";
 
 interface TypeItem { name: string; price: number }
 interface AddonItem { name: string; price: number }
@@ -353,9 +365,115 @@ const Admin = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [pdfOrcamentoMode, setPdfOrcamentoMode] = useState<"lista" | "gerador">("lista");
+  const [pdfItems, setPdfItems] = useState<any[]>([]);
+
+  // Finance states
+  const [finances, setFinances] = useState<any[]>([]);
+  const [loadingFinances, setLoadingFinances] = useState(false);
+  const [isFinanceModalOpen, setIsFinanceModalOpen] = useState(false);
+  const [financeCategory, setFinanceCategory] = useState("Marketing");
+  const [financeType, setFinanceType] = useState<"entrada" | "saida">("entrada");
+  const [financeAmount, setFinanceAmount] = useState("");
+  const [financeDescription, setFinanceDescription] = useState("");
+  const [financeDate, setFinanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [editingFinanceId, setEditingFinanceId] = useState<string | null>(null);
+
+  const fetchFinances = async () => {
+    try {
+      setLoadingFinances(true);
+      const { data, error } = await supabase
+        .from("financial_records")
+        .select("*")
+        .order("date", { ascending: false });
+
+      if (error) {
+        if (error.code === 'PGRST116' || error.message.includes('relation "financial_records" does not exist')) {
+          // If table doesn't exist, use empty or dummy for now
+          setFinances([]);
+          return;
+        }
+        throw error;
+      }
+      setFinances(data || []);
+    } catch (error: any) {
+      console.error("Erro ao buscar financeiro:", error.message);
+    } finally {
+      setLoadingFinances(false);
+    }
+  };
+
+  const handleSaveFinance = async () => {
+    if (!financeAmount || !financeDescription) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+
+    const payload = {
+      description: financeDescription,
+      amount: parseFloat(financeAmount.replace(",", ".")),
+      type: financeType,
+      category: financeCategory,
+      date: financeDate,
+    };
+
+    try {
+      if (editingFinanceId) {
+        const { error } = await supabase
+          .from("financial_records")
+          .update(payload)
+          .eq("id", editingFinanceId);
+        if (error) throw error;
+        toast.success("Registro atualizado!");
+      } else {
+        const { error } = await supabase
+          .from("financial_records")
+          .insert([payload]);
+        if (error) throw error;
+        toast.success("Registro adicionado!");
+      }
+      setIsFinanceModalOpen(false);
+      resetFinanceForm();
+      fetchFinances();
+    } catch (error: any) {
+      toast.error("Erro ao salvar: " + error.message);
+    }
+  };
+
+  const resetFinanceForm = () => {
+    setFinanceDescription("");
+    setFinanceAmount("");
+    setFinanceType("saida");
+    setFinanceCategory("Outros");
+    setFinanceDate(new Date().toISOString().split('T')[0]);
+    setEditingFinanceId(null);
+  };
+
+  const handleDeleteFinance = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("financial_records")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      toast.success("Excluído com sucesso");
+      fetchFinances();
+    } catch (error: any) {
+      toast.error("Erro ao excluir: " + error.message);
+    }
+  };
 
   const viewQuery = searchParams.get("view");
-  const view: AdminView = (viewQuery === "orders" || viewQuery === "services" || viewQuery === "clients" || viewQuery === "blog") ? viewQuery as AdminView : "dashboard";
+  const view: AdminView = (viewQuery === "orders" || viewQuery === "services" || viewQuery === "clients" || viewQuery === "blog" || viewQuery === "orcamento_pdf" || viewQuery === "management") ? viewQuery as AdminView : "dashboard";
+
+  useEffect(() => {
+    if (isAdmin) {
+      if (view === "management" || view === "dashboard") {
+        fetchFinances();
+        fetchAdminOrders();
+      }
+    }
+  }, [isAdmin, view]);
 
   const changeView = (newView: AdminView) => {
     const newParams = new URLSearchParams(searchParams);
@@ -1492,7 +1610,7 @@ const Admin = () => {
                 onClick={() => changeView("services")}
               >
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Gerenciar Produtos / Serviços</CardTitle>
+                  <CardTitle className="text-lg">Gerenciar Serviços</CardTitle>
                   <CardDescription>Adicione, edite ou remova serviços</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1536,13 +1654,18 @@ const Admin = () => {
                 </CardContent>
               </Card>
 
-              <Card className="hover:border-primary transition-colors cursor-pointer" onClick={() => { fetchAdminClients(); changeView("clients"); }}>
+              <Card className="hover:border-primary transition-colors cursor-pointer" onClick={() => changeView("management")}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Clientes Cadastrados</CardTitle>
-                  <CardDescription>Usuários registrados na plataforma</CardDescription>
+                  <CardTitle className="text-lg">Gestão</CardTitle>
+                  <CardDescription>Configurações e controle geral</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-primary">{totalClients}</div>
+                  <div className={`text-2xl font-bold ${((adminOrders.filter(o => o.status === "concluido").reduce((acc, o) => acc + (parseFloat(o.total_price) || 0), 0) + finances.filter(f => f.type === "entrada").reduce((acc, f) => acc + (f.amount || 0), 0)) - finances.filter(f => f.type === "saida").reduce((acc, f) => acc + (f.amount || 0), 0)) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    R$ {((adminOrders.filter(o => o.status === "concluido").reduce((acc, o) => acc + (parseFloat(o.total_price) || 0), 0) + finances.filter(f => f.type === "entrada").reduce((acc, f) => acc + (f.amount || 0), 0)) - finances.filter(f => f.type === "saida").reduce((acc, f) => acc + (f.amount || 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <PieChart className="w-3 h-3" /> Lucro Líquido Real
+                  </p>
                 </CardContent>
               </Card>
 
@@ -1553,6 +1676,29 @@ const Admin = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-primary">{articles.length} <span className="text-base font-medium text-muted-foreground">artigo{articles.length !== 1 ? 's' : ''}</span></div>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:border-primary transition-colors cursor-pointer" onClick={() => changeView("orcamento_pdf")}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Orçamento em PDF</CardTitle>
+                  <CardDescription>Gerencie itens exclusivos para PDF</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-primary">
+                    {services.filter(s => s.category === "orcamento_pdf").length}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Serviços exclusivos para PDF</p>
+                </CardContent>
+              </Card>
+
+              <Card className="hover:border-primary transition-colors cursor-pointer" onClick={() => { fetchAdminClients(); changeView("clients"); }}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Clientes Cadastrados</CardTitle>
+                  <CardDescription>Usuários registrados na plataforma</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-primary">{totalClients}</div>
                 </CardContent>
               </Card>
             </div>
@@ -3374,6 +3520,492 @@ const Admin = () => {
           </div>
         )}
 
+        {view === "orcamento_pdf" && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 mb-6">
+              <Button variant="outline" size="icon" onClick={() => changeView("dashboard")}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                  <Package className="h-6 w-6 text-primary" />
+                  Orçamento em PDF
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  Gerencie itens e gere orçamentos profissionais em PDF.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <Card className="border-primary/20 shadow-sm border-2">
+                  <CardHeader className="pb-4 flex flex-row items-center justify-between space-y-0">
+                    <div>
+                      <CardTitle className="text-xl">Configurar Orçamento</CardTitle>
+                      <CardDescription>Adicione serviços do catálogo ou itens manuais</CardDescription>
+                    </div>
+                    <Dialog.Root>
+                      <Dialog.Trigger asChild>
+                        <Button size="sm" className="gap-2 shadow-sm">
+                          <Plus className="w-4 h-4" /> Catálogo
+                        </Button>
+                      </Dialog.Trigger>
+                      <Dialog.Portal>
+                        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
+                        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] max-w-md bg-white rounded-2xl shadow-2xl p-6">
+                          <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold">Adicionar do Catálogo</h3>
+                            <Dialog.Close className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                              <X className="w-5 h-5" />
+                            </Dialog.Close>
+                          </div>
+                          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                            {services.length === 0 ? (
+                              <p className="text-center py-8 text-slate-400">Nenhum serviço encontrado.</p>
+                            ) : (
+                              services.map((s) => (
+                                <button
+                                  key={s.id}
+                                  className="w-full text-left p-4 rounded-xl border border-slate-100 hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center justify-between group"
+                                  onClick={() => {
+                                    setPdfItems([...pdfItems, { name: s.name, qty: 1, unitPrice: s.price || 0, desc: "" }]);
+                                    toast.success(`${s.name} adicionado!`);
+                                  }}
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                                      {s.icon ? <img src={s.icon} className="w-6 h-6 object-contain" /> : <Package className="w-5 h-5 text-slate-400" />}
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-sm group-hover:text-primary transition-colors">{s.name}</p>
+                                      <p className="text-xs text-muted-foreground">Preço base: R$ {s.price?.toFixed(2)}</p>
+                                    </div>
+                                  </div>
+                                  <Plus className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </Dialog.Content>
+                      </Dialog.Portal>
+                    </Dialog.Root>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {pdfItems.map((item, idx) => (
+                      <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 relative group">
+                        <button
+                          className="absolute top-2 right-2 p-1 text-slate-300 hover:text-red-500 transition-colors"
+                          onClick={() => setPdfItems(pdfItems.filter((_, i) => i !== idx))}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase text-slate-500">Título</Label>
+                            <Input
+                              value={item.name}
+                              onChange={(e) => {
+                                const newItems = [...pdfItems];
+                                newItems[idx].name = e.target.value;
+                                setPdfItems(newItems);
+                              }}
+                              className="h-8 font-bold text-blue-600 bg-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase text-slate-500">Descrição/Obs</Label>
+                            <Input
+                              value={item.desc}
+                              onChange={(e) => {
+                                const newItems = [...pdfItems];
+                                newItems[idx].desc = e.target.value;
+                                setPdfItems(newItems);
+                              }}
+                              className="h-8 text-xs text-blue-400 bg-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase text-slate-500">Quantidade</Label>
+                            <Input
+                              type="number"
+                              value={item.qty}
+                              onChange={(e) => {
+                                const newItems = [...pdfItems];
+                                newItems[idx].qty = parseInt(e.target.value) || 0;
+                                setPdfItems(newItems);
+                              }}
+                              className="h-8 text-center font-bold bg-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase text-slate-500">Valor Unitário</Label>
+                            <div className="relative">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                              <Input
+                                type="number"
+                                value={item.unitPrice}
+                                onChange={(e) => {
+                                  const newItems = [...pdfItems];
+                                  newItems[idx].unitPrice = parseFloat(e.target.value) || 0;
+                                  setPdfItems(newItems);
+                                }}
+                                className="h-8 pl-8 font-bold bg-white"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold uppercase text-slate-500">Subtotal</Label>
+                            <div className="h-8 flex items-center justify-end px-2 font-black text-green-600">
+                              R$ {(item.qty * item.unitPrice).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <Button variant="outline" className="w-full gap-2 border-dashed" onClick={() => setPdfItems([...pdfItems, { name: "Novo Item", qty: 1, unitPrice: 0, desc: "" }])}>
+                      <Plus className="w-4 h-4" /> Item Avulso
+                    </Button>
+
+                    {pdfItems.length > 0 && (
+                      <div className="pt-2">
+                        <Button variant="outline" className="w-full gap-2 border-red-100 text-red-500 hover:bg-red-50" onClick={() => setPdfItems([])}>
+                          <Trash2 className="w-4 h-4" /> Limpar Tudo
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <div className="flex gap-4">
+                  <Button className="flex-1 h-14 text-lg font-bold gap-2 shadow-lg shadow-primary/20" onClick={() => window.print()}>
+                    <Printer className="w-5 h-5" /> Imprimir Proposta
+                  </Button>
+                </div>
+              </div>
+
+              {/* PDF Preview Area */}
+              <div className="hidden lg:block">
+                <div className="sticky top-8 bg-slate-800 rounded-3xl p-8 shadow-2xl min-h-[700px] flex flex-col items-center justify-center text-slate-400 border border-slate-700">
+                  <Printer className="w-16 h-16 mb-6 opacity-10" />
+                  <p className="text-sm font-medium">Pré-visualização do PDF</p>
+                  <p className="text-[10px] uppercase tracking-widest mt-2 opacity-40">Clique em imprimir proposta</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === "management" && (() => {
+          // Automatic Revenue from Concluído Orders
+          const orderRevenue = adminOrders
+            .filter(o => o.status === "concluido")
+            .reduce((acc, o) => acc + (parseFloat(o.total_price) || 0), 0);
+
+          const manualRevenue = finances
+            .filter(f => f.type === "entrada")
+            .reduce((acc, f) => acc + (f.amount || 0), 0);
+
+          const totalExpenses = finances
+            .filter(f => f.type === "saida")
+            .reduce((acc, f) => acc + (f.amount || 0), 0);
+
+          const totalRevenue = orderRevenue + manualRevenue;
+          const netProfit = totalRevenue - totalExpenses;
+
+          return (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-4">
+                  <Button variant="outline" size="icon" onClick={() => changeView("dashboard")} className="rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm">
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                      <DollarSign className="w-6 h-6 text-primary" /> Gestão Financeira
+                    </h1>
+                    <p className="text-muted-foreground text-sm">Controle de lucros, faturamento e despesas</p>
+                  </div>
+                </div>
+                <Button onClick={() => { resetFinanceForm(); setIsFinanceModalOpen(true); }} className="rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+                  <Plus className="w-4 h-4 mr-2" /> Novo Registro
+                </Button>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border-none shadow-sm bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden relative">
+                  <div className="absolute top-0 right-0 p-4 opacity-10"><DollarSign className="w-16 h-16" /></div>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium opacity-80 uppercase tracking-wider">Faturam. de Vendas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">R$ {orderRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                    <p className="text-[10px] mt-1 opacity-70 flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Pedidos concluídos
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-sm bg-gradient-to-br from-emerald-500 to-emerald-600 text-white overflow-hidden relative">
+                  <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingUp className="w-16 h-16" /></div>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium opacity-80 uppercase tracking-wider">Receita Total</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                    <p className="text-[10px] mt-1 opacity-70 flex items-center gap-1">
+                      <ArrowUpRight className="w-3 h-3" /> Vendas + Entradas manuais
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-sm bg-gradient-to-br from-rose-500 to-rose-600 text-white overflow-hidden relative">
+                  <div className="absolute top-0 right-0 p-4 opacity-10"><TrendingDown className="w-16 h-16" /></div>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium opacity-80 uppercase tracking-wider">Total Despesas</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                    <p className="text-[10px] mt-1 opacity-70 flex items-center gap-1">
+                      <ArrowDownRight className="w-3 h-3" /> Gastos operacionais
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-md bg-white border border-slate-100 overflow-hidden relative">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Resultado (Lucro)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      R$ {netProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </div>
+                    <div className="mt-2 w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-1000 ${netProfit >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                        style={{ width: `${Math.min(100, Math.max(0, (totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0)))}%` }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Transactions Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2">
+                  <Card className="border-slate-200/60 shadow-sm rounded-2xl">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-50 py-4">
+                      <CardTitle className="text-lg font-bold">Fluxo de Caixa</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400"><Filter className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400"><Download className="w-4 h-4" /></Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      {loadingFinances ? (
+                        <div className="p-12 text-center animate-pulse text-slate-400">Carregando dados...</div>
+                      ) : finances.length === 0 ? (
+                        <div className="p-16 text-center text-slate-400">
+                          <PieChart className="w-12 h-12 mx-auto mb-4 opacity-10" />
+                          <p>Nenhum registro financeiro manual ainda.</p>
+                          <p className="text-xs">As vendas concluídas aparecem automaticamente nas métricas acima.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-slate-50/50 text-slate-500 font-medium border-b border-slate-100">
+                                <th className="px-6 py-4 text-left">Data</th>
+                                <th className="px-6 py-4 text-left">Descrição</th>
+                                <th className="px-6 py-4 text-left">Categoria</th>
+                                <th className="px-6 py-4 text-right">Valor</th>
+                                <th className="px-6 py-4 text-center">Ações</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {finances.map((item) => (
+                                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                                  <td className="px-6 py-4 text-slate-500 font-medium">
+                                    {format(new Date(item.date), "dd/MM/yyyy", { locale: ptBR })}
+                                  </td>
+                                  <td className="px-6 py-4 font-bold text-slate-700">{item.description}</td>
+                                  <td className="px-6 py-4">
+                                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-500">
+                                      {item.category}
+                                    </span>
+                                  </td>
+                                  <td className={`px-6 py-4 text-right font-black ${item.type === 'entrada' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                    {item.type === 'entrada' ? '+' : '-'} R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  </td>
+                                  <td className="px-6 py-4 text-center">
+                                    <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50" onClick={() => {
+                                        setEditingFinanceId(item.id);
+                                        setFinanceDescription(item.description);
+                                        setFinanceAmount(item.amount.toString());
+                                        setFinanceType(item.type);
+                                        setFinanceCategory(item.category);
+                                        setFinanceDate(item.date);
+                                        setIsFinanceModalOpen(true);
+                                      }}>
+                                        <Edit className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50" onClick={() => handleDeleteFinance(item.id)}>
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="space-y-6">
+                  <Card className="border-none shadow-sm bg-slate-50 rounded-2xl p-6">
+                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                      <PieChart className="w-4 h-4 text-primary" /> Distribuição Financeira
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="p-4 bg-white rounded-xl border border-slate-100">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-bold text-slate-500">Vendas (Produtos)</span>
+                          <span className="text-sm font-black text-emerald-600">
+                            {totalRevenue > 0 ? Math.round((orderRevenue / totalRevenue) * 100) : 0}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500" style={{ width: `${totalRevenue > 0 ? (orderRevenue / totalRevenue) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white rounded-xl border border-slate-100">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-bold text-slate-500">Custos / Despesas</span>
+                          <span className="text-sm font-black text-rose-600">
+                            {totalRevenue > 0 ? Math.round((totalExpenses / totalRevenue) * 100) : 0}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                          <div className="h-full bg-rose-500" style={{ width: `${totalRevenue > 0 ? Math.min(100, (totalExpenses / totalRevenue) * 100) : 0}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 relative overflow-hidden group">
+                    <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-110 transition-transform"><AlertCircle className="w-24 h-24" /></div>
+                    <h4 className="font-bold text-primary mb-2">Resumo Automático</h4>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Este painel consolida automaticamente as receitas de todas as suas vendas com status <b>concluído</b>. As despesas e outras entradas devem ser lançadas manualmente no botão <b>Novo Registro</b>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Finance Modal */}
+              <Dialog.Root open={isFinanceModalOpen} onOpenChange={setIsFinanceModalOpen}>
+                <Dialog.Portal>
+                  <Dialog.Overlay className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" />
+                  <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[70] w-full max-w-lg bg-white rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between mb-8">
+                      <Dialog.Title className="text-2xl font-bold">
+                        {editingFinanceId ? 'Editar Lançamento' : 'Novo Lançamento'}
+                      </Dialog.Title>
+                      <Dialog.Close asChild>
+                        <button className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                      </Dialog.Close>
+                    </div>
+
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-2 gap-4">
+                        <button
+                          className={`flex items-center justify-center gap-2 h-14 rounded-2xl border-2 transition-all font-bold ${financeType === 'entrada' ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                          onClick={() => setFinanceType("entrada")}
+                        >
+                          <TrendingUp className="w-5 h-5" /> Receita
+                        </button>
+                        <button
+                          className={`flex items-center justify-center gap-2 h-14 rounded-2xl border-2 transition-all font-bold ${financeType === 'saida' ? 'bg-rose-50 border-rose-500 text-rose-700' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                          onClick={() => setFinanceType("saida")}
+                        >
+                          <TrendingDown className="w-5 h-5" /> Despesa
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Valor do Lançamento</Label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">R$</span>
+                          <Input
+                            value={financeAmount}
+                            onChange={(e) => setFinanceAmount(e.target.value)}
+                            placeholder="0,00"
+                            className="h-14 pl-12 text-xl font-bold rounded-2xl border-slate-200"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Descrição / Nome</Label>
+                        <Input
+                          value={financeDescription}
+                          onChange={(e) => setFinanceDescription(e.target.value)}
+                          placeholder="Ex: Aluguel, Compra de material, etc."
+                          className="h-12 rounded-xl border-slate-200"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Categoria</Label>
+                          <select
+                            value={financeCategory}
+                            onChange={(e) => setFinanceCategory(e.target.value)}
+                            className="w-full h-12 rounded-xl border-slate-200 border bg-white px-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                          >
+                            <option>Marketing</option>
+                            <option>Infraestrutura</option>
+                            <option>Produtos / Insumos</option>
+                            <option>Mão de Obra</option>
+                            <option>Impostos</option>
+                            <option>Logística</option>
+                            <option>Outros</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Data</Label>
+                          <Input
+                            type="date"
+                            value={financeDate}
+                            onChange={(e) => setFinanceDate(e.target.value)}
+                            className="h-12 rounded-xl border-slate-200"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-6 flex gap-3">
+                        <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => setIsFinanceModalOpen(false)}>Cancelar</Button>
+                        <Button className="flex-1 h-12 rounded-xl font-bold shadow-lg shadow-primary/20" onClick={handleSaveFinance}>
+                          Salvar Lançamento
+                        </Button>
+                      </div>
+                    </div>
+                  </Dialog.Content>
+                </Dialog.Portal>
+              </Dialog.Root>
+            </div>
+          );
+        })()}
       </main>
     </div>
   );

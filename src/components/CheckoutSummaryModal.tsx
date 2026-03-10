@@ -1,10 +1,11 @@
 import { MapPin, User, ArrowLeft } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabaseClient";
 
 interface CheckoutSummaryModalProps {
     isOpen: boolean;
@@ -26,11 +27,20 @@ interface CheckoutSummaryModalProps {
     } | null;
 }
 
-const CheckoutSummaryContent = ({ onBack, onAdvance, customerData }: { onBack: () => void; onAdvance: () => void; customerData: any }) => {
+const CheckoutSummaryContent = ({ onBack, onAdvance, customerData, onProfileUpdate }: { onBack: () => void; onAdvance: () => void; customerData: any, onProfileUpdate?: (id: string) => void }) => {
     const navigate = useNavigate();
     const [cep, setCep] = useState("");
     const [loadingCep, setLoadingCep] = useState(false);
     const [fetchedAddress, setFetchedAddress] = useState<any>(null);
+    const [isAlteringAddress, setIsAlteringAddress] = useState(false);
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editName, setEditName] = useState(customerData?.name || "");
+    const [editPhone, setEditPhone] = useState(customerData?.phone || "");
+
+    useEffect(() => {
+        if (customerData?.name) setEditName(customerData.name);
+        if (customerData?.phone) setEditPhone(customerData.phone);
+    }, [customerData?.name, customerData?.phone]);
 
     const handleCepLookup = async (cepCode: string) => {
         const cleanedCep = cepCode.replace(/\D/g, "");
@@ -44,6 +54,28 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData }: { onBack: (
                 toast.error("CEP não encontrado");
             } else {
                 setFetchedAddress(data);
+
+                // Salvar/Atualizar no perfil se o usuário estiver logado
+                if (customerData?.id) {
+                    const { error: updateError } = await supabase
+                        .from('profiles')
+                        .update({
+                            street: data.logradouro,
+                            neighborhood: data.bairro,
+                            city: data.localidade,
+                            state: data.uf,
+                            cep: cleanedCep
+                        })
+                        .eq('id', customerData.id);
+
+                    if (updateError) {
+                        console.error("Erro ao salvar endereço:", updateError);
+                    } else {
+                        toast.success("Endereço atualizado no seu perfil!");
+                        if (onProfileUpdate) onProfileUpdate(customerData.id);
+                    }
+                }
+                setIsAlteringAddress(false);
             }
         } catch (error) {
             toast.error("Erro ao buscar CEP");
@@ -51,6 +83,35 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData }: { onBack: (
             setLoadingCep(false);
         }
     };
+    const handleSaveProfile = async () => {
+        if (!customerData?.id) return;
+
+        if (!editName.trim() || !editPhone.trim()) {
+            toast.error("Nome e telefone são obrigatórios");
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    full_name: editName,
+                    phone: editPhone
+                })
+                .eq('id', customerData.id);
+
+            if (error) throw error;
+
+            toast.success("Dados atualizados com sucesso!");
+            setIsEditingProfile(false);
+
+            if (onProfileUpdate) onProfileUpdate(customerData.id);
+        } catch (error) {
+            console.error("Erro ao atualizar perfil:", error);
+            toast.error("Erro ao atualizar dados");
+        }
+    };
+
     return (
         <div className="w-full max-w-[480px] mx-auto pt-6 pb-[68px] min-h-full">
             <div className="space-y-6">
@@ -64,25 +125,25 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData }: { onBack: (
                 {/* Address Section */}
                 <div className="px-4 sm:px-6 space-y-4">
                     <h2 className="text-xl font-bold text-foreground">Endereço do serviço</h2>
-                    {customerData?.address || fetchedAddress ? (
+                    {(customerData?.address || fetchedAddress) && !isAlteringAddress ? (
                         <div className="p-4 rounded-xl border border-muted-foreground/20 bg-card relative">
                             <div className="flex gap-3">
                                 <MapPin className="w-5 h-5 text-primary shrink-0" />
                                 <div className="space-y-1">
                                     <p className="font-medium text-foreground">
-                                        {customerData?.address || fetchedAddress?.logradouro}
-                                        {customerData?.number ? `, ${customerData.number}` : ''}
-                                        {customerData?.complement || fetchedAddress?.complemento ? `, ${customerData?.complement || fetchedAddress?.complemento}` : ''}
+                                        {fetchedAddress?.logradouro || customerData?.address}
+                                        {customerData?.number && !fetchedAddress ? `, ${customerData.number}` : ''}
+                                        {(fetchedAddress?.complemento || customerData?.complement) ? `, ${fetchedAddress?.complemento || customerData?.complement}` : ''}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        {customerData?.neighborhood || fetchedAddress?.bairro}, {customerData?.city || fetchedAddress?.localidade}, {customerData?.state || fetchedAddress?.uf} {customerData?.zipCode || cep}
+                                        {fetchedAddress?.bairro || customerData?.neighborhood}, {fetchedAddress?.localidade || customerData?.city}, {fetchedAddress?.uf || customerData?.state} {cep || customerData?.zipCode}
                                     </p>
                                 </div>
                             </div>
                         </div>
                     ) : (
                         <div className="p-5 rounded-xl border border-dashed border-primary/30 bg-primary/5 space-y-3">
-                            <p className="text-sm font-medium text-foreground">Endereço não encontrado no perfil. Informe seu CEP:</p>
+                            <p className="text-sm font-medium text-foreground">Digite o CEP:</p>
                             <div className="flex gap-2">
                                 <Input
                                     placeholder="00000-000"
@@ -99,8 +160,19 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData }: { onBack: (
                             </div>
                         </div>
                     )}
-                    <button onClick={() => navigate("/profile")} className="text-primary font-bold text-sm hover:underline uppercase tracking-tight">
-                        {customerData?.address ? "ALTERAR ENDEREÇO" : "CADASTRAR ENDEREÇO NO PERFIL"}
+                    <button
+                        onClick={() => {
+                            if (customerData?.address && !isAlteringAddress) {
+                                setIsAlteringAddress(true);
+                                setFetchedAddress(null);
+                                setCep("");
+                            } else {
+                                navigate("/profile");
+                            }
+                        }}
+                        className="text-primary font-bold text-sm hover:underline uppercase tracking-tight"
+                    >
+                        {customerData?.address && !isAlteringAddress ? "ALTERAR ENDEREÇO" : "CADASTRAR ENDEREÇO NO PERFIL"}
                     </button>
                 </div>
 
@@ -117,11 +189,29 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData }: { onBack: (
                             <div className="space-y-4 flex-1">
                                 <div className="space-y-0.5">
                                     <p className="text-xs font-bold text-foreground">Nome completo</p>
-                                    <p className="text-muted-foreground">{customerData?.name || "Não informado"}</p>
+                                    {isEditingProfile ? (
+                                        <Input
+                                            value={editName}
+                                            onChange={(e) => setEditName(e.target.value)}
+                                            className="h-8 text-sm mt-1"
+                                            placeholder="Seu nome"
+                                        />
+                                    ) : (
+                                        <p className="text-muted-foreground">{customerData?.name || "Não informado"}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-0.5">
                                     <p className="text-xs font-bold text-foreground">Telefone</p>
-                                    <p className="text-muted-foreground">{customerData?.phone || "Não informado"}</p>
+                                    {isEditingProfile ? (
+                                        <Input
+                                            value={editPhone}
+                                            onChange={(e) => setEditPhone(e.target.value)}
+                                            className="h-8 text-sm mt-1"
+                                            placeholder="(00) 00000-0000"
+                                        />
+                                    ) : (
+                                        <p className="text-muted-foreground">{customerData?.phone || "Não informado"}</p>
+                                    )}
                                 </div>
                                 <div className="space-y-0.5">
                                     <p className="text-xs font-bold text-foreground">E-mail</p>
@@ -130,8 +220,19 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData }: { onBack: (
                             </div>
                         </div>
                     </div>
-                    <button onClick={() => navigate("/profile")} className="text-primary font-bold text-sm hover:underline uppercase tracking-tight">
-                        EDITAR INFORMAÇÕES
+                    <button
+                        onClick={() => {
+                            if (isEditingProfile) {
+                                handleSaveProfile();
+                            } else {
+                                setEditName(customerData?.name || "");
+                                setEditPhone(customerData?.phone || "");
+                                setIsEditingProfile(true);
+                            }
+                        }}
+                        className="text-primary font-bold text-sm hover:underline uppercase tracking-tight"
+                    >
+                        {isEditingProfile ? "SALVAR ALTERAÇÕES" : "EDITAR INFORMAÇÕES"}
                     </button>
                 </div>
 
@@ -142,6 +243,14 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData }: { onBack: (
                         onClick={() => {
                             if (!customerData?.address && !fetchedAddress) {
                                 toast.error("Por favor, informe seu endereço ou CEP para prosseguir.");
+                                return;
+                            }
+                            if (!customerData?.name) {
+                                toast.error("Por favor, preencha seu nome no perfil para prosseguir.");
+                                return;
+                            }
+                            if (!customerData?.phone) {
+                                toast.error("Por favor, preencha seu telefone no perfil para prosseguir.");
                                 return;
                             }
                             onAdvance();

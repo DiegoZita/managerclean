@@ -30,3 +30,4 @@ dist-ssr
 check_supabase.js
 createAdmin.js
 testInsert.js
+.agent/

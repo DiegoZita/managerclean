@@ -74,7 +74,7 @@ const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSide
           {isMinApplied && (
             <div className="mb-3 rounded-md bg-amber-500/10 px-3 py-2 border border-amber-500/20">
               <p className="text-xs text-amber-700 font-medium">
-                Valor mínimo de atendimento: R$ 150,00
+                Valor mínimo de pedido R$ 150,00
               </p>
             </div>
           )}
