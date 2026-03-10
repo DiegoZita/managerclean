@@ -51,7 +51,8 @@ import {
   ArrowDownRight,
   AlertCircle,
   Filter,
-  MoreHorizontal
+  MoreHorizontal,
+  Ticket
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -494,11 +495,11 @@ const Admin = () => {
   const [loadingClients, setLoadingClients] = useState(false);
 
   const filterQuery = searchParams.get("filter");
-  const orderFilter = (filterQuery === "agendado" || filterQuery === "concluido" || filterQuery === "cancelado" || filterQuery === "excluido")
-    ? filterQuery as "agendado" | "concluido" | "cancelado" | "excluido"
+  const orderFilter: "todos" | "agendado" | "concluido" | "cancelado" | "excluido" | "pendente" = (filterQuery === "agendado" || filterQuery === "concluido" || filterQuery === "cancelado" || filterQuery === "excluido" || filterQuery === "pendente")
+    ? filterQuery as any
     : "todos";
 
-  const changeOrderFilter = (newFilter: "todos" | "agendado" | "concluido" | "cancelado" | "excluido") => {
+  const changeOrderFilter = (newFilter: "todos" | "agendado" | "concluido" | "cancelado" | "excluido" | "pendente") => {
     const newParams = new URLSearchParams(searchParams);
     if (newFilter === "todos") {
       newParams.delete("filter");
@@ -508,7 +509,7 @@ const Admin = () => {
     setSearchParams(newParams);
   };
   // Dashboard Metrics
-  const [orderMetrics, setOrderMetrics] = useState({ total: "--", agendados: "--", concluidos: "--", cancelados: "--", excluidos: "--" });
+  const [orderMetrics, setOrderMetrics] = useState({ total: "--", pendentes: "--", agendados: "--", concluidos: "--", cancelados: "--", excluidos: "--" });
   const [totalClients, setTotalClients] = useState<number | string>("--");
 
   // Delete confirmation state
@@ -600,6 +601,17 @@ const Admin = () => {
   const [showAvoid3, setShowAvoid3] = useState(false);
   const [avoid3Title, setAvoid3Title] = useState("Dicas de Segurança");
   const [avoid3List, setAvoid3List] = useState<{ title: string, description: string }[]>([]);
+
+  // Coupons states
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
+  const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
+  const [editingCouponId, setEditingCouponId] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponDiscountType, setCouponDiscountType] = useState<"fixed" | "percentage" | "fixed_increase" | "percentage_increase">("fixed");
+  const [couponDiscountValue, setCouponDiscountValue] = useState("");
+  const [couponMinValue, setCouponMinValue] = useState("");
+  const [couponIsActive, setCouponIsActive] = useState(true);
 
   const [showExtraSection, setShowExtraSection] = useState(true);
   const [extraSectionsList, setExtraSectionsList] = useState<{ title: string, content: string, image?: string, imageAlignment?: 'left' | 'right' }[]>([]);
@@ -754,6 +766,7 @@ const Admin = () => {
         fetchServices();
         fetchMetrics();
         fetchArticles();
+        fetchCoupons();
       } catch {
         navigate("/");
       } finally {
@@ -795,9 +808,98 @@ const Admin = () => {
     }
   };
 
+  const fetchCoupons = async () => {
+    setLoadingCoupons(true);
+    try {
+      const { data, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) {
+        if (error.code === 'PGRST116' || error.message.includes('relation "coupons" does not exist')) {
+          setCoupons([]);
+          return;
+        }
+        throw error;
+      }
+      if (data) setCoupons(data);
+    } catch {
+      toast.error("Erro ao carregar cupons");
+    } finally {
+      setLoadingCoupons(false);
+    }
+  };
+
+  const handleSaveCoupon = async () => {
+    if (!couponCode || !couponDiscountValue) {
+      toast.error("Código e valor do desconto são obrigatórios");
+      return;
+    }
+
+    const payload = {
+      code: couponCode.trim().toUpperCase(),
+      discount_type: couponDiscountType,
+      discount_value: parseFloat(couponDiscountValue.replace(",", ".")),
+      min_value: parseFloat(couponMinValue.replace(",", ".")) || 0,
+      is_active: couponIsActive,
+    };
+
+    try {
+      if (editingCouponId) {
+        const { error } = await supabase
+          .from("coupons")
+          .update(payload)
+          .eq("id", editingCouponId);
+        if (error) throw error;
+        toast.success("Cupom atualizado!");
+      } else {
+        const { error } = await supabase.from("coupons").insert([payload]);
+        if (error) throw error;
+        toast.success("Cupom criado!");
+      }
+      resetCouponForm();
+      fetchCoupons();
+      setIsCouponModalOpen(false);
+    } catch (error: any) {
+      toast.error("Erro ao salvar cupom: " + error.message);
+    }
+  };
+
+  const handleDeleteCoupon = async (id: string) => {
+    if (!window.confirm("Deseja realmente excluir este cupom?")) return;
+    try {
+      const { error } = await supabase.from("coupons").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Cupom removido!");
+      fetchCoupons();
+    } catch (error: any) {
+      toast.error("Erro ao excluir cupom: " + error.message);
+    }
+  };
+
+  const openEditCoupon = (coupon: any) => {
+    setEditingCouponId(coupon.id);
+    setCouponCode(coupon.code);
+    setCouponDiscountType(coupon.discount_type);
+    setCouponDiscountValue(String(coupon.discount_value));
+    setCouponMinValue(String(coupon.min_value));
+    setCouponIsActive(coupon.is_active);
+    setIsCouponModalOpen(true);
+  };
+
+  const resetCouponForm = () => {
+    setEditingCouponId(null);
+    setCouponCode("");
+    setCouponDiscountType("fixed");
+    setCouponDiscountValue("");
+    setCouponMinValue("");
+    setCouponIsActive(true);
+  };
+
   const fetchMetrics = async () => {
     try {
       const { count: ordersCount } = await supabase.from("orders").select("*", { count: "exact", head: true }).neq("status", "excluido");
+      const { count: pendentesCount } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq('status', 'pendente');
       const { count: agendadosCount } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq('status', 'agendado');
       const { count: concluidosCount } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq('status', 'concluido');
       const { count: canceladosCount } = await supabase.from("orders").select("*", { count: "exact", head: true }).eq('status', 'cancelado');
@@ -805,6 +907,7 @@ const Admin = () => {
 
       setOrderMetrics({
         total: ordersCount !== null ? String(ordersCount) : "--",
+        pendentes: pendentesCount !== null ? String(pendentesCount) : "--",
         agendados: agendadosCount !== null ? String(agendadosCount) : "--",
         concluidos: concluidosCount !== null ? String(concluidosCount) : "--",
         cancelados: canceladosCount !== null ? String(canceladosCount) : "--",
@@ -1589,7 +1692,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header cartCount={0} onCartToggle={() => { }} />
+      <Header cartCount={0} onCartToggle={() => { }} hideCart={true} />
 
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* ── DASHBOARD ─────────────────────────────────── */}
@@ -1637,6 +1740,10 @@ const Admin = () => {
                     <div className="flex flex-col">
                       <span className="text-3xl font-bold text-foreground">{orderMetrics.total}</span>
                       <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total</span>
+                    </div>
+                    <div className="flex flex-col border-l pl-4 border-amber-200">
+                      <span className="text-xl font-bold text-amber-600">{orderMetrics.pendentes}</span>
+                      <span className="text-[10px] text-amber-600/70 font-bold uppercase tracking-wider">Pend</span>
                     </div>
                     <div className="flex flex-col border-l pl-4 border-blue-200">
                       <span className="text-xl font-bold text-blue-600">{orderMetrics.agendados}</span>
@@ -1721,7 +1828,10 @@ const Admin = () => {
                   Controle o catálogo exibido na página inicial
                 </p>
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex gap-2">
+                <Button onClick={() => { resetCouponForm(); setIsCouponModalOpen(true); }} variant="outline">
+                  <Ticket className="mr-2 h-4 w-4" /> Adicionar Cupom
+                </Button>
                 <Button onClick={() => { resetForm(); setIsModalOpen(true); }}>
                   <Plus className="mr-2 h-4 w-4" /> Adicionar Serviço
                 </Button>
@@ -2103,6 +2213,88 @@ const Admin = () => {
               </Dialog.Portal>
             </Dialog.Root>
 
+            <Dialog.Root open={isCouponModalOpen} onOpenChange={(open) => { if (!open) resetCouponForm(); }}>
+              <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" />
+                <Dialog.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-md translate-x-[-50%] translate-y-[-50%] bg-background p-6 rounded-xl shadow-2xl animate-in zoom-in-95 duration-200 outline-none">
+                  <div className="flex items-center justify-between mb-6">
+                    <Dialog.Title className="text-xl font-bold">
+                      {editingCouponId ? "Editando Cupom" : "Novo Cupom"}
+                    </Dialog.Title>
+                    <Dialog.Close asChild>
+                      <button className="text-muted-foreground hover:text-foreground">
+                        <X className="h-5 w-5" />
+                      </button>
+                    </Dialog.Close>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Código do Cupom</Label>
+                      <Input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="EX: BEMVINDO10"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Tipo de Desconto</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          value={couponDiscountType}
+                          onChange={(e) => setCouponDiscountType(e.target.value as any)}
+                        >
+                          <option value="fixed">Desconto Fixo (R$)</option>
+                          <option value="percentage">Desconto Percentual (%)</option>
+                          <option value="fixed_increase">Acréscimo Fixo (R$)</option>
+                          <option value="percentage_increase">Acréscimo Percentual (%)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Valor</Label>
+                        <Input
+                          type="number"
+                          value={couponDiscountValue}
+                          onChange={(e) => setCouponDiscountValue(e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Valor Mínimo do Pedido</Label>
+                      <Input
+                        type="number"
+                        value={couponMinValue}
+                        onChange={(e) => setCouponMinValue(e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <Label className="cursor-pointer" htmlFor="coupon-active">Status: {couponIsActive ? 'Ativo' : 'Inativo'}</Label>
+                      <Switch
+                        id="coupon-active"
+                        checked={couponIsActive}
+                        onCheckedChange={setCouponIsActive}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 justify-end pt-6 mt-6 border-t">
+                    <Button variant="outline" onClick={() => setIsCouponModalOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button onClick={handleSaveCoupon}>
+                      {editingCouponId ? "Salvar Alterações" : "Criar Cupom"}
+                    </Button>
+                  </div>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+
             {/* ── SERVICES TABLE ── */}
             <div className="rounded-xl border bg-card overflow-hidden">
               {loadingServices ? (
@@ -2116,8 +2308,87 @@ const Admin = () => {
               ) : (
                 <div className="flex flex-col">
                   {/* Função helper para renderizar a tabela separada */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Domiciliar e Cupons lado a lado */}
+                    <div className="space-y-4">
+                      <div className="bg-muted py-2 px-4 shadow-sm border-y text-xs uppercase tracking-widest font-bold text-foreground/70 flex justify-between items-center">
+                        <span>Domiciliar ({services.filter(s => s.category === "casa").length})</span>
+                      </div>
+                      <div className="divide-y">
+                        {services.filter(s => s.category === "casa").map((service, index, arr) => (
+                          <div
+                            key={service.id}
+                            className="flex items-center gap-3 p-3 text-sm hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex flex-col items-center opacity-50 hover:opacity-100">
+                              <button onClick={() => moveService(service, "up")} disabled={index === 0} className="disabled:invisible">
+                                <ChevronUp className="w-3 h-3" />
+                              </button>
+                              <button onClick={() => moveService(service, "down")} disabled={index === arr.length - 1} className="disabled:invisible">
+                                <ChevronDown className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <div className="h-10 w-10 shrink-0 border rounded-lg bg-muted flex items-center justify-center p-1">
+                              {service.icon ? <img src={service.icon} className="h-full w-full object-contain" /> : <ImageIcon className="h-4 h-4" />}
+                            </div>
+                            <div className="flex-1 font-semibold truncate">{service.name}</div>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(service)}>
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => { setServiceToDelete(service); setIsDeleteModalOpen(true); }}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 border-l pl-0 lg:pl-6">
+                      <div className="bg-blue-50 py-2 px-4 shadow-sm border-y text-xs uppercase tracking-widest font-bold text-blue-700 flex justify-between items-center">
+                        <span>Cupons ({coupons.length})</span>
+                      </div>
+                      <div className="divide-y">
+                        {loadingCoupons ? <div className="p-4 text-center text-xs animate-pulse">Carregando...</div> :
+                          coupons.length === 0 ? <div className="p-4 text-center text-xs text-muted-foreground italic">Nenhum cupom ativo.</div> :
+                            coupons.map((coupon) => (
+                              <div
+                                key={coupon.id}
+                                className="flex items-center gap-3 p-3 text-sm hover:bg-muted/30 transition-colors"
+                              >
+                                <div className="h-10 w-10 shrink-0 border rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                  <Ticket className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="font-bold flex items-center gap-2">
+                                    {coupon.code}
+                                    {!coupon.is_active && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Inativo</span>}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {coupon.discount_type === 'percentage' ? `${coupon.discount_value}% OFF` :
+                                      coupon.discount_type === 'fixed' ? `R$ ${coupon.discount_value} OFF` :
+                                        coupon.discount_type === 'percentage_increase' ? `${coupon.discount_value}% EXTRA` :
+                                          `R$ ${coupon.discount_value} EXTRA`}
+                                    {coupon.min_value > 0 && ` • Min R$ ${coupon.min_value}`}
+                                  </div>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditCoupon(coupon)}>
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => handleDeleteCoupon(coupon.id)}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Outras Categorias */}
                   {[
-                    { cat: "casa", title: "Domiciliar" },
                     { cat: "empresa", title: "Empresarial" },
                     { cat: "outros", title: "Catálogo Completo" }
                   ].map((group) => {
@@ -2125,86 +2396,39 @@ const Admin = () => {
                     if (groupItems.length === 0) return null;
 
                     return (
-                      <div key={group.cat} className="mb-4">
+                      <div key={group.cat} className="mt-8">
                         <div className="bg-muted py-2 px-4 shadow-sm border-y text-xs uppercase tracking-widest font-bold text-foreground/70">
                           {group.title} ({groupItems.length})
                         </div>
-                        {groupItems.map((service, index) => (
-                          <div
-                            key={service.id}
-                            className="grid grid-cols-12 items-center border-b p-3 text-sm hover:bg-muted/30 transition-colors"
-                          >
-                            <div className="col-span-1 flex flex-col items-center justify-center space-y-1 mr-2 opacity-50 hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => moveService(service, "up")}
-                                disabled={index === 0}
-                                className="disabled:invisible p-1 hover:bg-primary/10 hover:text-primary rounded"
-                              >
-                                <ChevronUp className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => moveService(service, "down")}
-                                disabled={index === groupItems.length - 1}
-                                className="disabled:invisible p-1 hover:bg-primary/10 hover:text-primary rounded"
-                              >
-                                <ChevronDown className="w-4 h-4" />
-                              </button>
+                        <div className="divide-y">
+                          {groupItems.map((service, index) => (
+                            <div
+                              key={service.id}
+                              className="flex items-center gap-3 p-3 text-sm hover:bg-muted/30 transition-colors"
+                            >
+                              <div className="flex flex-col items-center opacity-50 hover:opacity-100">
+                                <button onClick={() => moveService(service, "up")} disabled={index === 0} className="disabled:invisible">
+                                  <ChevronUp className="w-3 h-3" />
+                                </button>
+                                <button onClick={() => moveService(service, "down")} disabled={index === groupItems.length - 1} className="disabled:invisible">
+                                  <ChevronDown className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <div className="h-10 w-10 shrink-0 border rounded-lg bg-muted flex items-center justify-center p-1">
+                                {service.icon ? <img src={service.icon} className="h-full w-full object-contain" /> : <ImageIcon className="h-4 h-4" />}
+                              </div>
+                              <div className="flex-1 font-semibold truncate">{service.name}</div>
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(service)}>
+                                  <Edit className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => { setServiceToDelete(service); setIsDeleteModalOpen(true); }}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </div>
-                            <div className="col-span-1">
-                              {service.icon && service.icon.startsWith("http") ? (
-                                <img
-                                  src={service.icon}
-                                  alt={service.name}
-                                  className="h-10 w-10 rounded-lg object-contain border border-border bg-muted/20 p-1 shadow-sm"
-                                />
-                              ) : (
-                                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center border border-border shadow-sm">
-                                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="col-span-5 font-semibold text-foreground truncate px-2">{service.name}</div>
-
-                            <div className="col-span-3 text-xs text-muted-foreground text-center">
-                              {service.types?.length
-                                ? <span className="inline-block bg-primary/10 text-primary px-2 py-0.5 rounded mr-1">{service.types.length} variações</span>
-                                : <span className="italic opacity-50 px-2">—</span>}
-
-                              {service.addons?.length
-                                ? <span className="inline-block border text-muted-foreground px-2 py-0.5 rounded">+{service.addons.length} extras</span>
-                                : ""}
-                            </div>
-
-                            <div className="col-span-2 flex justify-end gap-1 px-2">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 cursor-pointer"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  openEdit(service);
-                                }}
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 bg-red-50 text-red-600 border-red-200 hover:bg-red-100 transition-colors cursor-pointer"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  console.log("Delete clicked for", service.name);
-                                  setServiceToDelete(service);
-                                  setIsDeleteModalOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     );
                   })}
@@ -2268,6 +2492,14 @@ const Admin = () => {
                   Todos
                 </Button>
                 <Button
+                  variant={orderFilter === "pendente" ? "default" : "outline"}
+                  onClick={() => changeOrderFilter("pendente")}
+                  size="sm"
+                  className={orderFilter !== "pendente" ? "text-amber-600 border-amber-200 hover:bg-amber-50" : "bg-amber-600 hover:bg-amber-700 text-white"}
+                >
+                  Pendentes
+                </Button>
+                <Button
                   variant={orderFilter === "agendado" ? "default" : "outline"}
                   onClick={() => changeOrderFilter("agendado")}
                   size="sm"
@@ -2324,6 +2556,7 @@ const Admin = () => {
                   const scheduling = order.scheduling_data;
                   const customer = order.customer_data;
                   const statusColors: Record<string, string> = {
+                    pendente: "bg-amber-100 text-amber-800 border-amber-200",
                     agendado: "bg-blue-100 text-blue-800 border-blue-200",
                     concluido: "bg-green-100 text-green-800 border-green-200",
                     cancelado: "bg-red-100 text-red-800 border-red-200"
@@ -2346,6 +2579,7 @@ const Admin = () => {
                               onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
                               className={`px-3 py-1.5 rounded-lg text-sm font-bold uppercase border cursor-pointer outline-none transition-colors ${statusColors[order.status] || "bg-gray-100 text-gray-800 border-gray-200"}`}
                             >
+                              <option value="pendente">PENDENTE</option>
                               <option value="agendado">AGENDADO</option>
                               <option value="concluido">CONCLUÍDO</option>
                               <option value="cancelado">CANCELADO</option>
@@ -2380,6 +2614,19 @@ const Admin = () => {
                                 </span>
                               </div>
                             )) : <p className="text-xs text-muted-foreground">Itens no formato incorreto.</p>}
+
+                            {customer?.applied_coupon && (
+                              <div className="pt-3 border-t mt-3 space-y-1">
+                                <div className="flex justify-between items-center text-xs font-bold text-blue-600">
+                                  <span>CUPOM APLICADO:</span>
+                                  <span>{customer.applied_coupon}</span>
+                                </div>
+                                <div className={`flex justify-between items-center text-xs font-bold ${customer.coupon_discount < 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                                  <span>{customer.coupon_discount < 0 ? 'DESCONTO:' : 'ACRÉSCIMO:'}</span>
+                                  <span>{customer.coupon_discount < 0 ? '-' : '+'} R$ {Math.abs(customer.coupon_discount).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
 

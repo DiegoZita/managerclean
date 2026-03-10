@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { RefreshCw, Ticket } from "lucide-react";
 import Header from "@/components/Header";
 import ServiceCard from "@/components/ServiceCard";
 import CartSidebar from "@/components/CartSidebar";
@@ -37,7 +36,6 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    // On load, hide cart on mobile, show on desktop
     setShowCart(window.innerWidth >= 1024);
   }, []);
 
@@ -51,10 +49,7 @@ const Index = () => {
           .order("created_at", { ascending: true });
 
         if (error) throw error;
-
-        if (data) {
-          setServices(data as ServiceItem[]);
-        }
+        if (data) setServices(data as ServiceItem[]);
       } catch (error: any) {
         console.error("Error fetching services:", error);
         toast.error("Erro ao carregar serviços");
@@ -77,11 +72,9 @@ const Index = () => {
         if (data) setUserProfile(data);
       }
 
-      // Definir a chave do carrinho baseada no usuário
       const key = user ? `managerCleanCart_${user.id}` : "managerCleanCart_guest";
       setCartKey(key);
 
-      // Carregar carrinho
       const savedCart = localStorage.getItem(key);
       if (savedCart) {
         setCart(JSON.parse(savedCart));
@@ -94,7 +87,6 @@ const Index = () => {
     fetchServices();
     fetchUserProfile();
 
-    // Ouvir mudanças de autenticação para atualizar o carrinho
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user || null;
       setCurrentUser(user);
@@ -106,9 +98,7 @@ const Index = () => {
       setCart(savedCart ? JSON.parse(savedCart) : []);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -119,7 +109,7 @@ const Index = () => {
 
   const openConfigurator = (service: ServiceItem) => {
     setSelectedServiceForConfig(service);
-    setShowCart(false); // Hide cart when configuring a service
+    setShowCart(false);
   };
 
   const addToCartFromConfigurator = (
@@ -142,7 +132,7 @@ const Index = () => {
       return [...prev, { service, quantity, details, price }];
     });
     setSelectedServiceForConfig(null);
-    setShowCart(true); // Show cart again after adding
+    setShowCart(true);
     toast.success("Serviço adicionado ao carrinho!");
   };
 
@@ -177,8 +167,6 @@ const Index = () => {
   const handleCheckoutInitiation = () => {
     if (!currentUser) {
       toast.error("Você precisa fazer login para agendar um serviço.");
-      // Optional: Store cart intent or redirect
-      // For now we just show error.
       return;
     }
     setCheckoutStep("scheduling");
@@ -189,20 +177,10 @@ const Index = () => {
     setCheckoutStep("summary");
   };
 
-  const handleBackToScheduling = () => {
-    setCheckoutStep("scheduling");
-  };
-
-  const handleAdvanceToReview = () => {
-    setCheckoutStep("review");
-  };
-
-  const handleBackToSummary = () => {
-    setCheckoutStep("summary");
-  };
-
+  const handleBackToScheduling = () => setCheckoutStep("scheduling");
+  const handleAdvanceToReview = () => setCheckoutStep("review");
+  const handleBackToSummary = () => setCheckoutStep("summary");
   const handleFinalConfirm = () => {
-    toast.success("Redirecionando para o WhatsApp...");
     setCheckoutStep(null);
     setCart([]);
   };
@@ -211,8 +189,6 @@ const Index = () => {
   const outrosServicos = services.filter((s) => s.category === "outros");
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Deriva o customerData do perfil para passar aos componentes
-  // Se não existir perfil, mas o usuário estiver logado, garante o passe do ID
   const customerData = userProfile ? {
     id: userProfile.id,
     address: userProfile.street,
@@ -229,16 +205,7 @@ const Index = () => {
   } : currentUser ? {
     id: currentUser.id,
     email: currentUser.email,
-    name: "",
-    phone: "",
-    address: "",
-    number: "",
-    complement: "",
-    neighborhood: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    cpf: ""
+    name: "", phone: "", address: "", number: "", complement: "", neighborhood: "", city: "", state: "", zipCode: "", cpf: ""
   } : null;
 
   return (
@@ -251,68 +218,54 @@ const Index = () => {
         />
       </div>
 
-      <div className="container mx-auto px-6 py-12">
-        <div className="text-center mb-12 relative z-10 pt-4">
-          <h4 className="text-xs font-bold tracking-[0.2em] text-cyan-500 uppercase mb-3">Serviços Premium</h4>
-          <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 leading-tight">Monte seu Pedido</h2>
-          <p className="mt-4 text-slate-500 max-w-2xl mx-auto text-[15px] leading-relaxed">
-            Escolha os itens que deseja limpar ou impermeabilizar e tenha o orçamento em tempo real.
-          </p>
-        </div>
-
-        <div className="mb-12 flex flex-wrap items-center justify-center gap-4">
-          <div className="flex overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm p-1">
-            <button
-              onClick={() => setActiveTab("casa")}
-              className={`px-8 py-3 text-[13px] font-bold tracking-wide uppercase rounded-full transition-all duration-300 ${activeTab === "casa"
-                ? "bg-primary text-white shadow-md shadow-primary/20"
-                : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"
-                }`}
-            >
-              Domiciliar
-            </button>
-            <button
-              onClick={() => setActiveTab("empresa")}
-              className={`px-8 py-3 text-[13px] font-bold tracking-wide uppercase rounded-full transition-all duration-300 ${activeTab === "empresa"
-                ? "bg-primary text-white shadow-md shadow-primary/20"
-                : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"
-                }`}
-            >
-              Empresarial
-            </button>
-          </div>
-
-          <div className="hidden">
-            {/* Ocultando Recorrência e Cupom, conforme solicitado */}
-          </div>
-        </div>
-
-        <div className="flex gap-8">
+      <div className="container mx-auto max-w-[1600px] px-6 py-12">
+        <div className="flex gap-10">
           <div className="flex-1">
+            <div className="mb-12 relative z-10 pt-4 text-center">
+              <div className="flex flex-col gap-4 items-center">
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold tracking-[0.2em] text-cyan-500 uppercase mb-1">Serviços Premium</h4>
+                  <h2 className="text-4xl lg:text-5xl font-extrabold text-slate-800 leading-tight">Monte seu Pedido</h2>
+                </div>
+
+                <p className="text-slate-500 max-w-2xl text-[15px] leading-relaxed mx-auto">
+                  Escolha os itens que deseja limpar ou impermeabilizar e tenha o orçamento em tempo real.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-4 justify-center">
+                  <div className="flex overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm p-1">
+                    <button
+                      onClick={() => setActiveTab("casa")}
+                      className={`px-8 py-3 text-[13px] font-bold tracking-wide uppercase rounded-full transition-all duration-300 ${activeTab === "casa" ? "bg-primary text-white shadow-md shadow-primary/20" : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"}`}
+                    >
+                      Domiciliar
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("empresa")}
+                      className={`px-8 py-3 text-[13px] font-bold tracking-wide uppercase rounded-full transition-all duration-300 ${activeTab === "empresa" ? "bg-primary text-white shadow-md shadow-primary/20" : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"}`}
+                    >
+                      Empresarial
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {loadingServices ? (
               <div className="flex justify-center items-center py-20">
-                <p className="text-muted-foreground animate-pulse">
-                  Carregando serviços...
-                </p>
+                <p className="text-muted-foreground animate-pulse">Carregando serviços...</p>
               </div>
             ) : (
               <>
                 <h2 className="mb-6 text-xl font-extrabold text-slate-800 tracking-wide uppercase flex items-center gap-2">
                   <span className="w-2 h-6 bg-primary rounded-full inline-block"></span>
-                  {activeTab === "casa"
-                    ? "Preferidos"
-                    : "Empresarial"}
+                  {activeTab === "casa" ? "Preferidos" : "Empresarial"}
                 </h2>
                 <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                   {itemsForActiveTab.map((service) => (
-                    <ServiceCard
-                      key={service.id}
-                      service={service}
-                      onAdd={openConfigurator}
-                    />
+                    <ServiceCard key={service.id} service={service} onAdd={openConfigurator} />
                   ))}
                 </div>
-
                 {outrosServicos.length > 0 && (
                   <>
                     <h2 className="mb-6 mt-12 text-xl font-extrabold text-slate-800 tracking-wide uppercase flex items-center gap-2">
@@ -321,11 +274,7 @@ const Index = () => {
                     </h2>
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                       {outrosServicos.map((service) => (
-                        <ServiceCard
-                          key={service.id}
-                          service={service}
-                          onAdd={openConfigurator}
-                        />
+                        <ServiceCard key={service.id} service={service} onAdd={openConfigurator} />
                       ))}
                     </div>
                   </>
@@ -335,18 +284,19 @@ const Index = () => {
           </div>
 
           {showCart && (
-            <div className="hidden w-80 shrink-0 lg:block">
-              <CartSidebar
-                items={cart}
-                onUpdateQuantity={updateQuantity}
-                onRemove={removeItem}
-                onCheckout={handleCheckoutInitiation}
-              />
+            <div className="hidden lg:block lg:w-[480px] shrink-0 relative">
+              <div className="fixed top-[calc(50%+40px)] translate-y-[-50%] right-6 w-[480px] z-40 animate-in fade-in slide-in-from-right-8 duration-500 flex flex-col">
+                <CartSidebar
+                  items={cart}
+                  onUpdateQuantity={updateQuantity}
+                  onRemove={removeItem}
+                  onCheckout={handleCheckoutInitiation}
+                />
+              </div>
             </div>
           )}
         </div>
 
-        {/* Mobile/Tablet Cart Drawer - Only open if isMobile to avoid desktop override shadow */}
         <Sheet open={isMobile && showCart} onOpenChange={setShowCart}>
           <SheetContent side="right" className="w-full sm:max-w-md p-0 lg:hidden border-l-0 z-[1050]">
             <div className="h-full flex flex-col bg-slate-50">
@@ -398,41 +348,24 @@ const Index = () => {
         </Dialog.Portal>
       </Dialog.Root>
 
-      <Dialog.Root
-        open={checkoutStep !== null}
-        onOpenChange={(open) => !open && setCheckoutStep(null)}
-      >
+      <Dialog.Root open={checkoutStep !== null} onOpenChange={(open) => !open && setCheckoutStep(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-[1050] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" />
           <Dialog.Content className={`fixed left-[50%] ${checkoutStep ? 'top-0 h-full max-h-none rounded-none' : 'top-[50%] translate-y-[-50%] rounded-xl max-h-[90vh]'} z-[1050] w-[95vw] ${checkoutStep ? 'max-w-[480px]' : 'max-w-lg'} translate-x-[-50%] bg-background p-0 shadow-2xl animate-in zoom-in-95 duration-300 outline-none overflow-hidden transition-all ease-in-out`}>
-            <div className={`relative w-full h-full overflow-y-auto p-0`}>
+            <div className="relative w-full h-full overflow-y-auto p-0">
               {checkoutStep === "scheduling" && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                  <SchedulingContent
-                    onClose={() => setCheckoutStep(null)}
-                    onAdvance={handleAdvance}
-                  />
+                  <SchedulingContent onClose={() => setCheckoutStep(null)} onAdvance={handleAdvance} />
                 </div>
               )}
               {checkoutStep === "summary" && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                  <CheckoutSummaryContent
-                    onBack={handleBackToScheduling}
-                    onAdvance={handleAdvanceToReview}
-                    customerData={customerData}
-                    onProfileUpdate={refreshUserProfile}
-                  />
+                  <CheckoutSummaryContent onBack={handleBackToScheduling} onAdvance={handleAdvanceToReview} customerData={customerData} onProfileUpdate={refreshUserProfile} />
                 </div>
               )}
               {checkoutStep === "review" && (
                 <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                  <CheckoutReviewModal
-                    onBack={handleBackToSummary}
-                    onFinish={handleFinalConfirm}
-                    cart={cart}
-                    customerData={customerData}
-                    schedulingData={schedulingData}
-                  />
+                  <CheckoutReviewModal onBack={handleBackToSummary} onFinish={handleFinalConfirm} cart={cart} customerData={customerData} schedulingData={schedulingData} />
                 </div>
               )}
             </div>

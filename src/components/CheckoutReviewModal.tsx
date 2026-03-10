@@ -1,5 +1,6 @@
-import { ArrowLeft, ShoppingCart, CheckCircle2, User, MapPin, Phone, Ticket, X } from "lucide-react";
+import { ArrowLeft, ShoppingCart, CheckCircle2, User, MapPin, Phone, Ticket, X, Check } from "lucide-react";
 import { useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { CartItem } from "@/data/services";
 import { SchedulingData } from "@/components/SchedulingModal";
@@ -17,71 +18,119 @@ interface CheckoutReviewModalProps {
 const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingData }: CheckoutReviewModalProps) => {
     const [showCouponInput, setShowCouponInput] = useState(false);
     const [couponCode, setCouponCode] = useState("");
+    const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [lastWhatsappUrl, setLastWhatsappUrl] = useState("");
+
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const minOrderValue = 150;
     const isMinApplied = subtotal < 149 && subtotal > 0;
-    const total = isMinApplied ? minOrderValue : subtotal;
+    const baseTotal = isMinApplied ? minOrderValue : subtotal;
 
-    const handleWhatsAppRedirect = () => {
-        const phone = "5511944816323";
+    // Calculate dynamic total based on coupon
+    const calculateAdjustment = () => {
+        if (!appliedCoupon) return 0;
+        const { discount_type, discount_value } = appliedCoupon;
 
-        // Format Items
-        const itemsText = cart.map(item => {
-            let text = `${item.quantity}x ${item.service.name} (R$ ${(item.price * item.quantity).toFixed(2)})`;
-            if (item.details) {
-                text += `\n   ${item.details}`;
+        if (discount_type === 'fixed') return -discount_value;
+        if (discount_type === 'percentage') return -(baseTotal * (discount_value / 100));
+        if (discount_type === 'fixed_increase') return discount_value;
+        if (discount_type === 'percentage_increase') return (baseTotal * (discount_value / 100));
+        return 0;
+    };
+
+    const adjustment = calculateAdjustment();
+    const total = baseTotal + adjustment;
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode.trim()) {
+            toast.error("Por favor, digite um cupom");
+            return;
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('coupons')
+                .select('*')
+                .eq('code', couponCode.trim().toUpperCase())
+                .eq('is_active', true)
+                .single();
+
+            if (error || !data) {
+                toast.error("Cupom inválido ou expirado");
+                return;
             }
-            return text;
-        }).join("\n");
 
-        // Format Customer & Address
-        const customerName = customerData?.name || "Não informado";
-        const customerPhone = customerData?.phone || "Não informado";
-        const addressText = customerData ?
-            `${customerData.address}, ${customerData.number}${customerData.complement ? ` - ${customerData.complement}` : ''} - ${customerData.neighborhood}, ${customerData.city}/${customerData.state} CEP: ${customerData.zipCode}`
-            : "Não informado";
+            if (subtotal < data.min_value) {
+                toast.error(`Este cupom exige um pedido mínimo de R$ ${data.min_value.toFixed(2)}`);
+                return;
+            }
 
-        // Format Scheduling
-        const schedDate = schedulingData?.date || "Não informada";
-        const schedTime = schedulingData?.timeSlot || "Não informado";
-        const schedVolt = schedulingData?.voltage || "Não informada";
-        const schedObs = schedulingData?.observations || "Sem observações";
+            setAppliedCoupon(data);
+            setShowCouponInput(false);
+            toast.success("Cupom aplicado com sucesso!");
+        } catch (err) {
+            toast.error("Erro ao validar cupom");
+        }
+    };
 
-        const text = `*NOVO PEDIDO DE SERVIÇO* ✨\n\n` +
-            `*Cliente:* ${customerName}\n` +
-            `*Telefone:* ${customerPhone}\n` +
-            `*Endereço:* ${addressText}\n\n` +
-            `*📅 Agendamento:*\n` +
-            `*Data:* ${schedDate}\n` +
-            `*Período:* ${schedTime}\n` +
-            `*Voltagem:* ${schedVolt}\n` +
-            `*Observações:* ${schedObs}\n\n` +
-            `*🛍️ Itens do Pedido:*\n${itemsText}\n\n` +
-            `*💵 Resumo:*\n` +
-            `Subtotal: R$ ${subtotal.toFixed(2)}\n` +
-            (isMinApplied ? `Complemento p/ pedido mínimo: R$ ${(minOrderValue - subtotal).toFixed(2)}\n` : '') +
-            `*Total: R$ ${total.toFixed(2)}*`;
-
-        const encodedText = encodeURIComponent(text);
-        const whatsappUrl = `https://wa.me/${phone}?text=${encodedText}`;
-
+    const handleFinalizeOrder = async () => {
         // Save to orders table
         if (customerData?.id) {
-            supabase.from('orders').insert({
+            const { error } = await supabase.from('orders').insert({
                 user_id: customerData.id,
                 total_price: total,
                 cart_items: cart,
                 scheduling_data: schedulingData,
-                customer_data: customerData,
-                status: 'agendado'
-            }).then(({ error }) => {
-                if (error) console.error("Error saving order:", error);
+                customer_data: {
+                    ...customerData,
+                    applied_coupon: appliedCoupon?.code || null,
+                    coupon_discount: adjustment || 0
+                },
+                status: 'pendente'
             });
+
+            if (error) {
+                console.error("Error saving order:", error);
+                toast.error(`Erro ao processar o agendamento: ${error.message || "Tente novamente."}`);
+                return;
+            }
         }
 
-        window.open(whatsappUrl, '_blank');
+        setShowSuccessModal(true);
+    };
+
+    const handleFinalClose = () => {
         onFinish();
     };
+
+    if (showSuccessModal) {
+        return (
+            <div className="w-full max-w-[480px] mx-auto flex flex-col items-center justify-center min-h-[80vh] px-6 text-center animate-in fade-in zoom-in-95 duration-500">
+                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-8 animate-bounce">
+                    <Check className="w-12 h-12 text-green-600" strokeWidth={3} />
+                </div>
+
+                <div className="space-y-4 mb-10">
+                    <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight">
+                        Pedido Confirmado!
+                    </h2>
+                    <p className="text-slate-600 font-medium leading-relaxed text-lg">
+                        Seu pedido foi recebido com sucesso. Em alguns instantes, nossa equipe entrará em contato para confirmar os detalhes.
+                    </p>
+                </div>
+
+                <div className="w-full space-y-4">
+                    <Button
+                        onClick={handleFinalClose}
+                        className="w-full bg-primary hover:bg-primary/90 text-white font-black py-7 rounded-2xl text-xl uppercase tracking-tight shadow-xl shadow-primary/20 transition-all active:scale-95"
+                    >
+                        Encerrar
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full max-w-[480px] mx-auto pt-6 pb-[68px] min-h-full">
@@ -168,6 +217,16 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
                                     </div>
                                 )}
 
+                                {appliedCoupon && (
+                                    <div className={`flex justify-between text-sm p-2 rounded-md ${adjustment < 0 ? 'text-green-600 bg-green-500/10' : 'text-blue-600 bg-blue-500/10'}`}>
+                                        <div className="flex items-center gap-2">
+                                            <Ticket className="w-3 h-3" />
+                                            <span>Cupom: <strong>{appliedCoupon.code}</strong></span>
+                                        </div>
+                                        <span>{adjustment < 0 ? '-' : '+'} R$ {Math.abs(adjustment).toFixed(2)}</span>
+                                    </div>
+                                )}
+
                                 <div className="flex justify-between font-bold text-lg text-primary pt-2 border-t border-border">
                                     <span>Total a pagar</span>
                                     <div className="text-right">
@@ -193,14 +252,7 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
                                 />
                                 <Button
                                     className="bg-primary hover:bg-primary/90 text-white font-bold h-auto px-6 rounded-xl text-xs uppercase"
-                                    onClick={() => {
-                                        if (couponCode.trim()) {
-                                            toast.info(`Cupom "${couponCode}" aplicado! (Funcionalidade em desenvolvimento)`);
-                                            setShowCouponInput(false);
-                                        } else {
-                                            toast.error("Por favor, digite um cupom");
-                                        }
-                                    }}
+                                    onClick={handleApplyCoupon}
                                 >
                                     Aplicar
                                 </Button>
@@ -210,10 +262,27 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
                                     onClick={() => {
                                         setShowCouponInput(false);
                                         setCouponCode("");
+                                        setAppliedCoupon(null);
                                     }}
                                 >
                                     <X className="w-5 h-5" />
                                 </Button>
+                            </div>
+                        ) : appliedCoupon ? (
+                            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                                <div className="flex items-center gap-2 text-green-700 font-bold text-sm">
+                                    <Ticket className="w-4 h-4" />
+                                    <span>CUPOM: {appliedCoupon.code}</span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setAppliedCoupon(null);
+                                        setCouponCode("");
+                                    }}
+                                    className="text-green-700 hover:text-red-500 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
                             </div>
                         ) : (
                             <Button
@@ -226,7 +295,7 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
                         )}
                         <Button
                             className="bg-primary hover:bg-primary/90 text-white font-bold py-6 px-12 rounded-xl text-lg uppercase transition-transform active:scale-95 w-full"
-                            onClick={handleWhatsAppRedirect}
+                            onClick={handleFinalizeOrder}
                         >
                             FINALIZAR PEDIDO
                         </Button>

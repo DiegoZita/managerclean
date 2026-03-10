@@ -70,12 +70,14 @@ const Orders = () => {
                             const date = new Date(order.created_at);
                             const scheduling = order.scheduling_data;
                             const statusColors: Record<string, string> = {
+                                pendente: "bg-amber-100 text-amber-800 border-amber-200",
                                 agendado: "bg-blue-100 text-blue-800 border-blue-200",
                                 concluido: "bg-green-100 text-green-800 border-green-200",
                                 cancelado: "bg-red-100 text-red-800 border-red-200"
                             };
 
                             const headerColors: Record<string, string> = {
+                                pendente: "bg-amber-50 border-b-amber-100",
                                 agendado: "bg-blue-50 border-b-blue-100",
                                 concluido: "bg-green-50 border-b-green-100",
                                 cancelado: "bg-red-50 border-b-red-100"
