@@ -17,7 +17,8 @@ import {
     X,
     Check,
     Send,
-    Clock
+    Clock,
+    ShoppingBag
 } from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/components/Header";
@@ -463,7 +464,8 @@ export default function Blog() {
                             onClick={() => navigate("/orcamento")}
                             className="bg-primary hover:bg-primary/90 text-white px-10 py-6 rounded-full font-bold tracking-wide text-base shadow-lg shadow-primary/30"
                         >
-                            Fazer Orçamento
+                            <ShoppingBag className="w-5 h-5 mr-2 inline-block" />
+                            LOJA
                         </Button>
                     </div>
                 </div>

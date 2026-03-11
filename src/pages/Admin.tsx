@@ -515,6 +515,7 @@ const Admin = () => {
   // Delete confirmation state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<ServiceItem | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<{ id: string, status: string } | null>(null);
 
   // ----- Form state -----
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1085,17 +1086,23 @@ const Admin = () => {
     }
   };
 
-  const handleTrashOrder = async (orderId: string, currentStatus: string) => {
+  const handleTrashOrder = (orderId: string, currentStatus: string) => {
+    setOrderToDelete({ id: orderId, status: currentStatus });
+  };
+
+  const confirmTrashOrder = async () => {
+    if (!orderToDelete) return;
+
+    const { id: orderId, status: currentStatus } = orderToDelete;
+
     if (currentStatus === "excluido") {
-      if (!window.confirm("CUIDADO: Você quer excluir este pedido PERMANENTEMENTE? Ele será APAGADO DEFINITIVAMENTE do banco de dados. Esta ação não tem volta.")) {
-        return;
-      }
       try {
         const { data, error } = await supabase.from("orders").delete().eq("id", orderId).select();
         if (error) throw error;
 
         if (!data || data.length === 0) {
           toast.error("Erro: O banco de dados não permitiu a exclusão definitiva! Permissão de DELETE pendente no Supabase (RLS).");
+          setOrderToDelete(null);
           return;
         }
 
@@ -1104,20 +1111,24 @@ const Admin = () => {
       } catch (err: any) {
         toast.error("Erro de exclusão: " + err.message);
       }
-      return;
-    }
-
-    if (!window.confirm("Mover pedido para a LIXEIRA? Ele não será mais visível para o cliente no histórico de pedidos, e virá para sua aba de Excluídos.")) {
+      setOrderToDelete(null);
       return;
     }
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .update({ status: "excluido" })
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .select();
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        toast.error("Erro: O banco de dados não permitiu a exclusão! Verifique as permissões de UPDATE no Supabase (RLS).");
+        setOrderToDelete(null);
+        return;
+      }
 
       toast.success("Pedido movido para a lixeira (excluído)!");
 
@@ -1127,6 +1138,7 @@ const Admin = () => {
       console.error("Erro ao excluir pedido:", err);
       toast.error("Erro ao excluir pedido: " + err.message);
     }
+    setOrderToDelete(null);
   };
 
 
@@ -2672,6 +2684,30 @@ const Admin = () => {
                 })}
               </div>
             )}
+
+            <AlertDialog open={orderToDelete !== null} onOpenChange={(open) => { if (!open) setOrderToDelete(null); }}>
+              <AlertDialogContent className="max-w-[400px]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {orderToDelete?.status === 'excluido' ? 'Excluir permanentemente?' : 'Mover para a lixeira?'}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {orderToDelete?.status === 'excluido' 
+                      ? 'CUIDADO: Este pedido será APAGADO DEFINITIVAMENTE do banco de dados. Esta ação não tem volta.' 
+                      : 'O pedido não será mais visível para o cliente no histórico, mas ficará na sua aba de Excluídos.'}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                  <AlertDialogCancel className="sm:flex-1">CANCELAR</AlertDialogCancel>
+                  <AlertDialogAction
+                    className={`sm:flex-1 ${orderToDelete?.status === 'excluido' ? "bg-red-600 hover:bg-red-700" : "bg-primary hover:bg-primary/90"}`}
+                    onClick={confirmTrashOrder}
+                  >
+                    {orderToDelete?.status === 'excluido' ? 'APAGAR DEFINITIVAMENTE' : 'MOVER PARA LIXEIRA'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
 

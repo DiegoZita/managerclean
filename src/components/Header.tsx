@@ -1,4 +1,4 @@
-import { ShoppingCart, User, LogOut, Settings, Package, Menu, X } from "lucide-react";
+import { ShoppingCart, User, LogOut, Settings, Package, Menu, X, ShoppingBag } from "lucide-react";
 import logo from "@/assets/logo-manager-clean.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -82,7 +82,7 @@ const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = fal
   };
 
   return (
-    <div className="relative bg-primary z-50">
+    <div className={`relative ${userData?.email === 'admin@managerloja.com' ? 'bg-slate-900' : 'bg-primary'} z-50`}>
       <header className="w-full">
         <div className="container mx-auto px-6 py-[15px] flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
@@ -133,7 +133,8 @@ const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = fal
                   onClick={() => navigate("/orcamento")}
                   className="bg-white hover:bg-slate-50 text-primary rounded-full px-6 py-2 shadow-lg shadow-black/10 text-[13px] font-extrabold tracking-wide transition-all uppercase"
                 >
-                  Orçamento
+                  <ShoppingBag className="w-4 h-4 mr-2 inline-block" />
+                  LOJA
                 </button>
               )}
             </nav>
@@ -260,9 +261,10 @@ const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = fal
               {!hideOrcamento && (
                 <button
                   onClick={() => { navigate("/orcamento"); setIsMenuOpen(false); }}
-                  className="bg-primary text-white rounded-xl px-6 py-4 text-center text-sm font-extrabold tracking-wide uppercase shadow-lg shadow-primary/20"
+                  className={`${userData?.email === 'admin@managerloja.com' ? 'bg-slate-900' : 'bg-primary'} text-white rounded-xl px-6 py-4 text-center text-sm font-extrabold tracking-wide uppercase shadow-lg shadow-primary/20`}
                 >
-                  Orçamento
+                  <ShoppingBag className="w-4 h-4 mr-2 inline-block" />
+                  LOJA
                 </button>
               )}
             </nav>
@@ -272,7 +274,7 @@ const Header = ({ cartCount, onCartToggle, hideOrcamento = false, hideCart = fal
       {/* Wavy Bottom */}
       <div className="absolute top-[99%] left-0 w-full overflow-hidden leading-none pointer-events-none">
         <svg viewBox="0 0 1440 100" preserveAspectRatio="none" className="w-full h-[10px] md:h-[15px] lg:h-[20px]">
-          <path className="fill-primary" d="M0,32L80,42.7C160,53,320,75,480,74.7C640,75,800,53,960,48C1120,43,1280,53,1360,58.7L1440,64L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"></path>
+          <path className={userData?.email === 'admin@managerloja.com' ? 'fill-slate-900' : 'fill-primary'} d="M0,32L80,42.7C160,53,320,75,480,74.7C640,75,800,53,960,48C1120,43,1280,53,1360,58.7L1440,64L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"></path>
         </svg>
       </div>
     </div>

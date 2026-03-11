@@ -29,7 +29,8 @@ import {
     Settings,
     Menu,
     Wallet,
-    MoveHorizontal
+    MoveHorizontal,
+    ShoppingBag
 } from "lucide-react";
 import logo from "@/assets/logo-manager-clean.png";
 import { supabase } from "@/lib/supabaseClient";
@@ -272,7 +273,7 @@ const Home = () => {
 
             <div className="relative z-10 w-full h-full pb-8">
                 {/* Navbar with Wave */}
-                <div className="fixed top-0 left-0 w-full bg-primary z-50 shadow-md">
+                <div className={`fixed top-0 left-0 w-full ${userData?.email === 'admin@managerloja.com' ? 'bg-slate-900' : 'bg-primary'} z-50 shadow-md`}>
                     <header className="container mx-auto px-6 py-[15px] flex items-center justify-between">
                         <div className="flex items-center gap-2 cursor-pointer" onClick={() => { navigate('/'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
                             <img src={logo} alt="Logo" className="h-[40px] md:h-[50px] object-contain drop-shadow-sm" />
@@ -288,7 +289,8 @@ const Home = () => {
                                     onClick={() => navigate('/orcamento')}
                                     className="bg-white hover:bg-slate-50 text-primary rounded-full px-6 py-2 shadow-lg shadow-black/10 text-[13px] font-extrabold tracking-wide"
                                 >
-                                    ORÇAMENTO
+                                    <ShoppingBag className="w-4 h-4 mr-2" />
+                                    LOJA
                                 </Button>
                             </nav>
 
@@ -361,7 +363,7 @@ const Home = () => {
                     </header>
                     {/* Mobile Menu Overlay */}
                     {isMenuOpen && (
-                        <div className="lg:hidden bg-primary shadow-2xl border-t border-white/10 animate-in slide-in-from-top duration-300">
+                        <div className={`lg:hidden ${userData?.email === 'admin@managerloja.com' ? 'bg-slate-900' : 'bg-primary'} shadow-2xl border-t border-white/10 animate-in slide-in-from-top duration-300`}>
                             <nav className="flex flex-col p-6 space-y-4">
                                 <a href="#solutions" onClick={() => setIsMenuOpen(false)} className="text-white text-sm font-bold tracking-wide uppercase py-2 border-b border-white/5">SOLUÇÕES</a>
                                 <a href="#about" onClick={() => setIsMenuOpen(false)} className="text-white text-sm font-bold tracking-wide uppercase py-2 border-b border-white/5">SOBRE</a>
@@ -372,7 +374,8 @@ const Home = () => {
                                     onClick={() => { navigate('/orcamento'); setIsMenuOpen(false); }}
                                     className="bg-white text-primary hover:bg-slate-50 rounded-full px-6 py-4 text-[13px] font-extrabold tracking-wide uppercase shadow-lg shadow-black/10"
                                 >
-                                    SOLICITAR
+                                    <ShoppingBag className="w-4 h-4 mr-2" />
+                                    LOJA
                                 </Button>
                             </nav>
                         </div>
@@ -380,7 +383,7 @@ const Home = () => {
                     {/* Wavy Bottom */}
                     <div className="absolute top-[99%] left-0 w-full overflow-hidden leading-none pointer-events-none">
                         <svg viewBox="0 0 1440 100" preserveAspectRatio="none" className="w-full h-[10px] md:h-[15px] lg:h-[20px]">
-                            <path className="fill-primary" d="M0,32L80,42.7C160,53,320,75,480,74.7C640,75,800,53,960,48C1120,43,1280,53,1360,58.7L1440,64L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"></path>
+                            <path className={userData?.email === 'admin@managerloja.com' ? 'fill-slate-900' : 'fill-primary'} d="M0,32L80,42.7C160,53,320,75,480,74.7C640,75,800,53,960,48C1120,43,1280,53,1360,58.7L1440,64L1440,0L1360,0C1280,0,1120,0,960,0C800,0,640,0,480,0C320,0,160,0,80,0L0,0Z"></path>
                         </svg>
                     </div>
                 </div>
@@ -402,7 +405,8 @@ const Home = () => {
                                 onClick={() => navigate('/orcamento')}
                                 className="bg-primary hover:bg-primary/90 text-white rounded-full px-10 py-7 text-[15px] font-bold tracking-wide shadow-xl shadow-primary/30 mt-4"
                             >
-                                SOLICITAR
+                                <ShoppingBag className="w-5 h-5 mr-2" />
+                                LOJA
                             </Button>
                         </div>
                     </div>
