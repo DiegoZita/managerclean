@@ -105,8 +105,8 @@ const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSide
 
         {isMinApplied && items.length > 0 && (
           <div className="mb-3 text-center">
-            <p className="text-[8px] text-amber-500 font-black uppercase tracking-wider">
-              Valor mínimo de R$ 150,00 aplicado
+            <p className="text-[10px] text-amber-500 font-black uppercase tracking-wider">
+              Valor mínimo de R$ 150,00
             </p>
           </div>
         )}
