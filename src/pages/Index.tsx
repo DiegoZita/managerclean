@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ServiceItem, CartItem } from "@/data/services";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "sonner";
+import { ShoppingBag, X, Check } from "lucide-react";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<"casa" | "empresa">("casa");
@@ -129,7 +130,32 @@ const Index = () => {
     });
     setSelectedServiceForConfig(null);
     setShowCart(true);
-    toast.success("Serviço adicionado ao carrinho!");
+
+    // Alerta centralizado no rodapé (footer)
+    toast.custom((t) => (
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[10000] bg-gradient-to-r from-primary to-blue-600 text-white p-4 rounded-2xl shadow-2xl flex items-center gap-6 min-w-[320px] border border-white/10 animate-in fade-in slide-in-from-bottom-full duration-500">
+        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+          <Check className="w-6 h-6 text-primary" strokeWidth={4} />
+        </div>
+
+        <div className="flex-1 pr-4">
+          <p className="font-black text-base tracking-tight leading-none text-white whitespace-nowrap">Serviço Adicionado!</p>
+          <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-1">Item já está no seu carrinho</p>
+        </div>
+
+        <button
+          onClick={() => toast.dismiss(t)}
+          className="absolute right-3 p-1.5 hover:bg-white/10 rounded-lg transition-colors group"
+        >
+          <X className="w-4 h-4 text-white/40 group-hover:text-white" />
+        </button>
+      </div>
+    ), {
+      duration: 1500,
+      position: "bottom-center",
+      unstyled: true,
+      id: "cart-notification"
+    });
   };
 
   const refreshUserProfile = async (userId?: string) => {
