@@ -281,4 +281,53 @@
   .animate-water-drop {
     animation: waterDrop 0.7s ease-in forwards;
   }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 0.5;
+      transform: scale(1);
+      filter: blur(40px);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.2);
+      filter: blur(60px);
+    }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+  }
+
+  @keyframes loading-progress {
+    0% {
+      width: 0%;
+      left: 0;
+    }
+    50% {
+      width: 100%;
+      left: 0;
+    }
+    100% {
+      width: 0%;
+      left: 100%;
+    }
+  }
+
+  .animate-loading-progress {
+    animation: loading-progress 2s ease-in-out infinite;
+  }
 }

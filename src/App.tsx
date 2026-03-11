@@ -16,14 +16,21 @@ import NotFound from "./pages/NotFound";
 import Blog from "./pages/Blog";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import LoadingScreen from "./components/LoadingScreen";
 
 // Basic Auth Guard for sensitive routes
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
+  const [showLoading, setShowLoading] = useState(false);
   const [session, setSession] = useState<any>(null);
   const location = useLocation();
 
   useEffect(() => {
+    // Delay showing the loading screen by 800ms
+    const timer = setTimeout(() => {
+      if (loading) setShowLoading(true);
+    }, 800);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
@@ -33,15 +40,18 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      subscription.unsubscribe();
+    };
+  }, [loading]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-primary">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent shadow-xl"></div>
-      </div>
-    );
+  if (loading && showLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (loading && !showLoading) {
+    return null; // Don't show anything yet
   }
 
   if (!session) {

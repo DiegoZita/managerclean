@@ -33,6 +33,7 @@ import {
     ShoppingBag
 } from "lucide-react";
 import logo from "@/assets/logo-manager-clean.png";
+import LoadingScreen from "@/components/LoadingScreen";
 import { supabase } from "@/lib/supabaseClient";
 import {
     DropdownMenu,
@@ -62,6 +63,16 @@ const Home = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
     const [tutorialViewed, setTutorialViewed] = useState(false);
+    const [showLoading, setShowLoading] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    useEffect(() => {
+        // Only show loading screen if initialization takes more than 1 second
+        const timer = setTimeout(() => {
+            if (!isInitialized) setShowLoading(true);
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, [isInitialized]);
 
     const [isCleaning, setIsCleaning] = useState(false);
     const [isClean, setIsClean] = useState(false);
@@ -117,6 +128,7 @@ const Home = () => {
                     email: profile?.email || session.user.email
                 });
             }
+            setIsInitialized(true);
         };
         fetchUser();
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -259,6 +271,8 @@ const Home = () => {
         if (hasDragged) return;
         setSelectedService(item);
     }, [hasDragged]);
+
+    if (showLoading && !isInitialized) return <LoadingScreen />;
 
     return (
         <div className="min-h-screen bg-white font-sans text-foreground overflow-hidden relative selection:bg-primary/20">
