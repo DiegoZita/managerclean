@@ -75,6 +75,43 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
     };
 
     const handleFinalizeOrder = async () => {
+        // --- BOT DE NOTIFICAÇÃO AUTOMÁTICA (CallMeBot) ---
+        const sendAutomaticBotNotification = () => {
+            const phoneNumber = "5511944816323";
+            const apiKey = "2539791";
+
+            const name = (customerData?.name || "Cliente").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const phone = (customerData?.phone || "Nao informado").replace(/\D/g, "");
+
+            try {
+                const text = `Novo Pedido no Site - Nome: ${name} - Fone: ${phone}`;
+                const encodedMsg = encodeURIComponent(text).replace(/%20/g, '+');
+                const url = `https://api.callmebot.com/whatsapp.php?phone=${phoneNumber}&text=${encodedMsg}&apikey=${apiKey}`;
+
+                // --- MÉTODO DE FORÇA BRUTA (Janela em Background) ---
+                // Abre o link em uma janela minúscula fora da visão do usuário para forçar o disparo
+                const botWin = window.open(url, "callMeBot", "width=10,height=10,left=-500,top=-500,scrollbars=no,status=no");
+
+                // Volta o foco para a loja imediatamente
+                window.focus();
+
+                // Fecha a janelinha do bot após 3 segundos (tempo suficiente para o servidor receber)
+                if (botWin) {
+                    setTimeout(() => botWin.close(), 3000);
+                }
+
+                // Backup silencioso
+                fetch(url, { mode: 'no-cors', keepalive: true }).catch(() => { });
+
+                console.log("Bot: Disparo forçado via janela de background.");
+            } catch (err) {
+                console.error("Bot: Erro no disparo forçado.", err);
+            }
+        };
+
+        // Envia o aviso
+        sendAutomaticBotNotification();
+
         // Save to orders table
         if (customerData?.id) {
             const { error } = await supabase.from('orders').insert({

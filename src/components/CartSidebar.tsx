@@ -91,17 +91,19 @@ const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSide
       </div>
 
       {/* Footer / Summary - Always visible to maintain structure */}
-      <div className={`p-6 bg-white border-t border-slate-50 transition-opacity duration-300 ${items.length === 0 ? 'opacity-40 pointer-events-none grayscale' : 'opacity-100'}`}>
-        <div className="flex flex-col items-end mb-5 w-full gap-1">
-          <p className="text-2xl font-black text-sky-400 tracking-tighter leading-none">
-            R$ {total.toFixed(2)}
-          </p>
-          <p className="text-[11px] font-bold text-slate-400 leading-none mr-0.5">
-            ou 10x de R$ {(total / 10).toFixed(2)} sem juros
-          </p>
-        </div>
+      <div className="p-6 bg-white border-t border-slate-50">
+        {items.length > 0 && (
+          <div className="flex flex-col items-end mb-5 w-full gap-1 animate-in fade-in duration-300">
+            <p className="text-2xl font-black text-sky-400 tracking-tighter leading-none">
+              R$ {total.toFixed(2)}
+            </p>
+            <p className="text-[11px] font-bold text-slate-400 leading-none mr-0.5">
+              ou 10x de R$ {(total / 10).toFixed(2)} sem juros
+            </p>
+          </div>
+        )}
 
-        {isMinApplied && (
+        {isMinApplied && items.length > 0 && (
           <div className="mb-3 text-center">
             <p className="text-[8px] text-amber-500 font-black uppercase tracking-wider">
               Valor mínimo de R$ 150,00 aplicado

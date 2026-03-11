@@ -116,79 +116,87 @@ const Login = () => {
                             </CardDescription>
                         </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <div className="relative">
-                                {/* Hidden input to trick autofill mechanisms on iOS */}
-                                <input type="text" style={{ display: 'none' }} aria-hidden="true" />
-                                <Input
-                                    id="email"
-                                    type="text"
-                                    name="user_email_no_suggest"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    autoComplete="new-password"
-                                    autoCorrect="off"
-                                    autoCapitalize="none"
-                                    spellCheck="false"
-                                    className="border-border"
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Senha</Label>
-                            <div className="relative">
-                                <Input
-                                    id="password"
-                                    type={showPassword ? "text" : "password"}
-                                    name="user_password_no_suggest"
-                                    value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    autoComplete="new-password"
-                                    autoCorrect="off"
-                                    autoCapitalize="none"
-                                    className="border-border pr-10"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    tabIndex={-1}
-                                >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
-                            </div>
-                        </div>
-                        {isRegistering && (
+                    <CardContent>
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleAction();
+                            }}
+                            className="space-y-4"
+                        >
                             <div className="space-y-2">
-                                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                                <Label htmlFor="email">Email</Label>
+                                <div className="relative">
+                                    {/* Hidden input to trick autofill mechanisms on iOS */}
+                                    <input type="text" style={{ display: 'none' }} aria-hidden="true" />
+                                    <Input
+                                        id="email"
+                                        type="text"
+                                        name="user_email_no_suggest"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        autoComplete="new-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="none"
+                                        spellCheck="false"
+                                        className="border-border"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="password">Senha</Label>
                                 <div className="relative">
                                     <Input
-                                        id="confirmPassword"
-                                        type={showConfirmPassword ? "text" : "password"}
-                                        value={formData.confirmPassword}
-                                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                        id="password"
+                                        type={showPassword ? "text" : "password"}
+                                        name="user_password_no_suggest"
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        autoComplete="new-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="none"
                                         className="border-border pr-10"
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        onClick={() => setShowPassword(!showPassword)}
                                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                         tabIndex={-1}
                                     >
-                                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </button>
                                 </div>
                             </div>
-                        )}
-                        <Button
-                            onClick={handleAction}
-                            disabled={loading}
-                            className="w-full bg-primary py-6 text-lg font-bold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
-                        >
-                            {loading ? "Processando..." : (isRegistering ? "Criar conta" : "Entrar")}
-                        </Button>
+                            {isRegistering && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="confirmPassword"
+                                            type={showConfirmPassword ? "text" : "password"}
+                                            value={formData.confirmPassword}
+                                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                            className="border-border pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                            tabIndex={-1}
+                                        >
+                                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            <Button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-primary py-6 text-lg font-bold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
+                            >
+                                {loading ? "Processando..." : (isRegistering ? "Criar conta" : "Entrar")}
+                            </Button>
+                        </form>
                     </CardContent>
                     <CardFooter className="flex flex-col space-y-4 text-center">
                         {!isRegistering && (

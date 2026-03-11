@@ -241,7 +241,13 @@ const Profile = () => {
                                     value={formData.phone}
                                     placeholder="(00) 00000-0000"
                                     maxLength={15}
-                                    onChange={(e) => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
+                                    onChange={(e) => {
+                                        const masked = maskPhone(e.target.value);
+                                        setFormData({ ...formData, phone: masked });
+                                        if (masked.length === 15) {
+                                            e.target.blur();
+                                        }
+                                    }}
                                     className="border-border"
                                 />
                             </div>

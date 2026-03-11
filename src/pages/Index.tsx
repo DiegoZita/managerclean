@@ -17,7 +17,7 @@ const Index = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartKey, setCartKey] = useState<string>("managerCleanCart_guest");
   const [isInitializingCart, setIsInitializingCart] = useState(true);
-  const [showCart, setShowCart] = useState(true);
+  const [showCart, setShowCart] = useState(false);
   const [selectedServiceForConfig, setSelectedServiceForConfig] =
     useState<ServiceItem | null>(null);
   const [checkoutStep, setCheckoutStep] = useState<"scheduling" | "summary" | "review" | null>(null);
@@ -33,10 +33,6 @@ const Index = () => {
     checkIsMobile();
     window.addEventListener("resize", checkIsMobile);
     return () => window.removeEventListener("resize", checkIsMobile);
-  }, []);
-
-  useEffect(() => {
-    setShowCart(window.innerWidth >= 1024);
   }, []);
 
   useEffect(() => {

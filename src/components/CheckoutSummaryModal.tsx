@@ -205,9 +205,31 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData, onProfileUpda
                                     {isEditingProfile ? (
                                         <Input
                                             value={editPhone}
-                                            onChange={(e) => setEditPhone(e.target.value)}
+                                            onChange={(e) => {
+                                                let val = e.target.value.replace(/\D/g, "");
+                                                if (val.length > 11) val = val.slice(0, 11);
+
+                                                let formatted = "";
+                                                if (val.length > 0) {
+                                                    formatted = "(" + val.slice(0, 2);
+                                                    if (val.length > 2) {
+                                                        formatted += ") " + val.slice(2, 7);
+                                                        if (val.length > 7) {
+                                                            formatted += "-" + val.slice(7, 11);
+                                                        }
+                                                    }
+                                                }
+
+                                                setEditPhone(formatted);
+
+                                                // Se completou os 11 dígitos no formato (11) 99999-9999, o length será 15
+                                                if (formatted.length === 15) {
+                                                    e.target.blur();
+                                                }
+                                            }}
                                             className="h-8 text-sm mt-1"
                                             placeholder="(00) 00000-0000"
+                                            maxLength={15}
                                         />
                                     ) : (
                                         <p className="text-muted-foreground">{customerData?.phone || "Não informado"}</p>
