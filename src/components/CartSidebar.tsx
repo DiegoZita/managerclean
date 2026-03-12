@@ -24,9 +24,8 @@ const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSide
           <div className="w-10 h-10 bg-sky-50 rounded-xl flex items-center justify-center">
             <ShoppingCart className="h-5 w-5 text-sky-400" />
           </div>
-          <div className="flex flex-col text-left">
-            <h2 className="text-sm font-black text-slate-800 tracking-tight leading-none uppercase">Seu Carrinho</h2>
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight mt-1 leading-none">
+          <div className="flex flex-col text-left justify-center">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight leading-none">
               {totalItems} {totalItems === 1 ? "serviço selecionado" : "serviços selecionados"}
             </p>
           </div>

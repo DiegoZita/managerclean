@@ -524,7 +524,7 @@ const Admin = () => {
   const [category, setCategory] = useState<"casa" | "empresa" | "outros">("casa");
   const [seatPrices, setSeatPrices] = useState<SeatPrice[]>([]);
   const [models, setModels] = useState<{ name: string; price: number }[]>([]);
-  const [adicionais, setAdicionais] = useState<{ name: string; price: number }[]>([]);
+  const [adicionais, setAdicionais] = useState<{ title: string; is_multiplier: boolean; items: { name: string; price: number }[] }[]>([]);
   const [materials, setMaterials] = useState<TypeItem[]>([]);
   const [types, setTypes] = useState<TypeItem[]>([]);
   const [addons, setAddons] = useState<AddonItem[]>([]);
@@ -1312,7 +1312,16 @@ const Admin = () => {
     setCategory(service.category as any);
     setSeatPrices((service.seat_prices as any) ?? []);
     setModels((service.models as any) ?? []);
-    setAdicionais((service.adicionais as any) ?? []);
+    // Convert old flat array to new group format if needed
+    let adicData = (service.adicionais as any) ?? [];
+    if (adicData.length > 0 && !adicData[0].title) {
+      adicData = [{
+        title: "Adicional (opcional)",
+        is_multiplier: service.visibility?.adicionais_is_multiplier ?? false,
+        items: adicData
+      }];
+    }
+    setAdicionais(adicData);
     setMaterials(service.materials ?? []);
     setTypes(service.types ?? []);
     setAddons(service.addons ?? []);
@@ -2037,49 +2046,101 @@ const Admin = () => {
                           <Label className="font-semibold flex items-center gap-2">➕ Adicional (opcional)</Label>
                           <Switch
                             checked={visibility.adicionais}
-                            onCheckedChange={(checked) => setVisibility(v => ({ ...v, adicionais: checked }))}
+                            onCheckedChange={(checked) => {
+                              setVisibility(v => ({ ...v, adicionais: checked }));
+                              if (checked && adicionais.length === 0) {
+                                setAdicionais([{ title: "Adicional (opcional)", is_multiplier: false, items: [] }]);
+                              }
+                            }}
                           />
                         </div>
                         {visibility.adicionais && (
-                          <>
-                            <div className="flex items-center gap-4 mb-4 mt-2 p-3 bg-background rounded-lg border">
-                              <Label className="text-sm font-medium">Tipo de Cobrança:</Label>
-                              <div className="flex items-center gap-2">
-                                <label className="flex items-center gap-1.5 text-sm cursor-pointer">
-                                  <input
-                                    type="radio"
-                                    name="adicional_type"
-                                    checked={!visibility.adicionais_is_multiplier}
-                                    onChange={() => setVisibility(v => ({ ...v, adicionais_is_multiplier: false }))}
-                                  />
-                                  Valor Fixo (+R$)
-                                </label>
-                                <label className="flex items-center gap-1.5 text-sm cursor-pointer ml-4">
-                                  <input
-                                    type="radio"
-                                    name="adicional_type"
-                                    checked={!!visibility.adicionais_is_multiplier}
-                                    onChange={() => setVisibility(v => ({ ...v, adicionais_is_multiplier: true }))}
-                                  />
-                                  Multiplicador (x)
-                                </label>
+                          <div className="space-y-6 mt-4">
+                            {adicionais.map((group, groupIdx) => (
+                              <div key={groupIdx} className="p-4 rounded-xl border border-cyan-200 bg-white space-y-4 relative group/adic shadow-sm">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute top-2 right-2 h-8 w-8 text-red-400 hover:text-red-600 opacity-10 md:opacity-0 group-hover/adic:opacity-100 transition-opacity"
+                                  onClick={() => setAdicionais(adicionais.filter((_, i) => i !== groupIdx))}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Título da Seção de Adicionais</Label>
+                                    <Input
+                                      value={group.title}
+                                      onChange={(e) => {
+                                        const newList = [...adicionais];
+                                        newList[groupIdx].title = e.target.value;
+                                        setAdicionais(newList);
+                                      }}
+                                      placeholder="Ex: Almofada Solta"
+                                      className="h-9 bg-slate-50/50 border-cyan-100 focus-visible:border-cyan-300 font-medium"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Tipo de Cobrança do Grupo</Label>
+                                    <div className="flex items-center gap-4 h-9 px-3 bg-slate-50/50 rounded-md border border-cyan-100">
+                                      <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                                        <input
+                                          type="radio"
+                                          name={`adic_type_${groupIdx}`}
+                                          checked={!group.is_multiplier}
+                                          onChange={() => {
+                                            const newList = [...adicionais];
+                                            newList[groupIdx].is_multiplier = false;
+                                            setAdicionais(newList);
+                                          }}
+                                          className="text-cyan-600 focus:ring-cyan-500"
+                                        />
+                                        Valor Fixo
+                                      </label>
+                                      <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                                        <input
+                                          type="radio"
+                                          name={`adic_type_${groupIdx}`}
+                                          checked={group.is_multiplier}
+                                          onChange={() => {
+                                            const newList = [...adicionais];
+                                            newList[groupIdx].is_multiplier = true;
+                                            setAdicionais(newList);
+                                          }}
+                                          className="text-cyan-600 focus:ring-cyan-500"
+                                        />
+                                        Multiplicador
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <NamePriceListEditor
+                                  label="Itens e Preços"
+                                  items={group.items}
+                                  onChange={(newItems) => {
+                                    const newList = [...adicionais];
+                                    newList[groupIdx].items = newItems;
+                                    setAdicionais(newList);
+                                  }}
+                                  namePlaceholder="Ex: Almofada Solta"
+                                  pricePlaceholder={group.is_multiplier ? "1.2" : "30.00"}
+                                  accentColor="bg-cyan-500/10 text-cyan-700"
+                                  valuePrefix={group.is_multiplier ? "x" : "R$"}
+                                  helpText={group.is_multiplier ? "Multiplicador: 1.2 soma +20%." : "Valor fixo que será somado."}
+                                />
                               </div>
-                            </div>
-                            <NamePriceListEditor
-                              label=""
-                              items={adicionais}
-                              onChange={setAdicionais}
-                              namePlaceholder="Ex: Almofada Solta"
-                              pricePlaceholder={visibility.adicionais_is_multiplier ? "1.2" : "30.00"}
-                              accentColor="bg-cyan-500/10 text-cyan-700"
-                              valuePrefix={visibility.adicionais_is_multiplier ? "x" : "R$"}
-                              helpText={
-                                visibility.adicionais_is_multiplier
-                                  ? "Digite o multiplicador. Ex: 1.2 (+20% do valor)."
-                                  : "Digite o valor fixo a ser somado no total."
-                              }
-                            />
-                          </>
+                            ))}
+
+                            <Button
+                              variant="outline"
+                              className="w-full border-dashed border-2 h-14 bg-white hover:bg-cyan-50 text-cyan-600 border-cyan-200 transition-all font-bold"
+                              onClick={() => setAdicionais([...adicionais, { title: "Novo Adicional", is_multiplier: false, items: [] }])}
+                            >
+                              <Plus className="w-4 h-4 mr-2" /> Adicionar Novo Grupo de Adicionais
+                            </Button>
+                          </div>
                         )}
                       </div>
 

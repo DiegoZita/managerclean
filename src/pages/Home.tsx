@@ -524,7 +524,7 @@ const Home = () => {
 
                         <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-8 reveal">Fácil, Rápido e Seguro!</h2>
 
-                        <div className="grid md:grid-cols-2 gap-8">
+                        <div className="grid md:grid-cols-2 gap-8 items-center">
                             {/* Enhanced Mockup Image Area */}
                             <div className="flex items-center justify-center relative group py-6 mt-0 reveal reveal-delay-200">
                                 {/* Background Design Elements */}
@@ -542,7 +542,7 @@ const Home = () => {
                             <div className="space-y-6 reveal reveal-delay-400">
                                 {/* Card 1 - Cyan */}
                                 <div className="bg-cyan-600/50 backdrop-blur-md border border-cyan-400/30 p-8 rounded-2xl text-white hover:bg-cyan-600/70 transition-colors">
-                                    <div className="flex flex-col sm:flex-row gap-5 items-start">
+                                    <div className="flex flex-col sm:flex-row gap-5 items-center">
                                         <div className="w-12 h-12 bg-cyan-400/30 rounded-full flex items-center justify-center shrink-0">
                                             <CheckCircle2 className="w-6 h-6" />
                                         </div>
@@ -556,12 +556,12 @@ const Home = () => {
 
                                 {/* Card 2 - White */}
                                 <div className="bg-white p-8 rounded-2xl shadow-xl hover:scale-[1.02] transition-transform">
-                                    <div className="flex flex-col sm:flex-row gap-5 items-start">
+                                    <div className="flex flex-col sm:flex-row gap-5 items-center">
                                         <div className="w-12 h-12 shadow-md bg-white rounded-full flex items-center justify-center shrink-0 text-primary border border-slate-100">
                                             <Headset className="w-6 h-6" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold tracking-widest text-slate-400 mb-1 uppercase">Atendimento</p>
+                                            <p className="text-[10px] font-bold tracking-widest text-slate-400 mb-1 uppercase">Diferenciado</p>
                                             <h3 className="font-extrabold mb-2 text-lg text-slate-800 leading-tight uppercase">Suporte Exclusivo</h3>
                                             <p className="text-sm text-slate-500 leading-relaxed font-medium">Atendimento 100% humano, com nossa equipe pronta para te auxiliar em cada etapa.</p>
                                         </div>
@@ -570,14 +570,14 @@ const Home = () => {
 
                                 {/* Card 3 - Cyan */}
                                 <div className="bg-cyan-600/50 backdrop-blur-md border border-cyan-400/30 p-8 rounded-2xl text-white hover:bg-cyan-600/70 transition-colors">
-                                    <div className="flex flex-col sm:flex-row gap-5 items-start">
+                                    <div className="flex flex-col sm:flex-row gap-5 items-center">
                                         <div className="w-12 h-12 bg-cyan-400/30 rounded-full flex items-center justify-center shrink-0">
                                             <Wallet className="w-6 h-6" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold tracking-widest text-white/60 mb-1 uppercase">Confiança</p>
-                                            <h3 className="font-extrabold mb-2 text-lg leading-tight uppercase">Pagamento após conclusão</h3>
-                                            <p className="text-sm text-white/80 leading-relaxed font-medium">Para sua total segurança, o pagamento é realizado apenas após a conclusão do serviço.</p>
+                                            <p className="text-[10px] font-bold tracking-widest text-white/60 mb-1 uppercase">Prático</p>
+                                            <h3 className="font-extrabold mb-2 text-lg leading-tight uppercase">Pagamento via link</h3>
+                                            <p className="text-sm text-white/80 leading-relaxed font-medium">Pagamento rápido e seguro via link. Finalize diretamente pelo celular ou computador.</p>
                                         </div>
                                     </div>
                                 </div>
