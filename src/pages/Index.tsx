@@ -173,13 +173,11 @@ const Index = () => {
 
   const updateQuantity = (index: number, delta: number) => {
     setCart((prev) =>
-      prev
-        .map((item, i) =>
-          i === index
-            ? { ...item, quantity: Math.max(0, item.quantity + delta) }
-            : item,
-        )
-        .filter((item) => item.quantity > 0),
+      prev.map((item, i) =>
+        i === index
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item,
+      )
     );
   };
 

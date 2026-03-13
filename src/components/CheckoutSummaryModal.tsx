@@ -1,7 +1,7 @@
 import { MapPin, User, ArrowLeft } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -29,7 +29,9 @@ interface CheckoutSummaryModalProps {
 
 const CheckoutSummaryContent = ({ onBack, onAdvance, customerData, onProfileUpdate }: { onBack: () => void; onAdvance: () => void; customerData: any, onProfileUpdate?: (id: string) => void }) => {
     const navigate = useNavigate();
+    const numberInputRef = useRef<HTMLInputElement>(null);
     const [cep, setCep] = useState("");
+    const [editNumber, setEditNumber] = useState(customerData?.number || "");
     const [loadingCep, setLoadingCep] = useState(false);
     const [fetchedAddress, setFetchedAddress] = useState<any>(null);
     const [isAlteringAddress, setIsAlteringAddress] = useState(false);
@@ -40,7 +42,8 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData, onProfileUpda
     useEffect(() => {
         if (customerData?.name) setEditName(customerData.name);
         if (customerData?.phone) setEditPhone(customerData.phone);
-    }, [customerData?.name, customerData?.phone]);
+        if (customerData?.number) setEditNumber(customerData.number);
+    }, [customerData?.name, customerData?.phone, customerData?.number]);
 
     const handleCepLookup = async (cepCode: string) => {
         const cleanedCep = cepCode.replace(/\D/g, "");
@@ -54,33 +57,56 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData, onProfileUpda
                 toast.error("CEP não encontrado");
             } else {
                 setFetchedAddress(data);
-
-                // Salvar/Atualizar no perfil se o usuário estiver logado
-                if (customerData?.id) {
-                    const { error: updateError } = await supabase
-                        .from('profiles')
-                        .update({
-                            street: data.logradouro,
-                            neighborhood: data.bairro,
-                            city: data.localidade,
-                            state: data.uf,
-                            cep: cleanedCep
-                        })
-                        .eq('id', customerData.id);
-
-                    if (updateError) {
-                        console.error("Erro ao salvar endereço:", updateError);
-                    } else {
-                        toast.success("Endereço atualizado no seu perfil!");
-                        if (onProfileUpdate) onProfileUpdate(customerData.id);
-                    }
-                }
-                setIsAlteringAddress(false);
+                // Auto focus on number input after CEP lookup
+                setTimeout(() => {
+                    numberInputRef.current?.focus();
+                }, 100);
             }
         } catch (error) {
             toast.error("Erro ao buscar CEP");
         } finally {
             setLoadingCep(false);
+        }
+    };
+
+    const handleSaveAddress = async () => {
+        if (!fetchedAddress && !cep) {
+            setIsAlteringAddress(false);
+            return;
+        }
+
+        const targetCep = cep.replace(/\D/g, "") || customerData?.zipCode;
+        const targetAddress = fetchedAddress?.logradouro || customerData?.address;
+        const targetBairro = fetchedAddress?.bairro || customerData?.neighborhood;
+        const targetCity = fetchedAddress?.localidade || customerData?.city;
+        const targetState = fetchedAddress?.uf || customerData?.state;
+
+        if (customerData?.id) {
+            try {
+                const { error: updateError } = await supabase
+                    .from('profiles')
+                    .update({
+                        street: targetAddress,
+                        neighborhood: targetBairro,
+                        city: targetCity,
+                        state: targetState,
+                        cep: targetCep,
+                        number: editNumber
+                    })
+                    .eq('id', customerData.id);
+
+                if (updateError) throw updateError;
+
+                toast.success("Endereço atualizado!");
+                if (onProfileUpdate) onProfileUpdate(customerData.id);
+                setIsAlteringAddress(false);
+            } catch (err) {
+                console.error("Erro ao salvar endereço:", err);
+                toast.error("Erro ao salvar endereço");
+            }
+        } else {
+            // Se não tiver ID (guest), apenas fecha e deixa o estado local guiar (embora o ideal seria persistir)
+            setIsAlteringAddress(false);
         }
     };
     const handleSaveProfile = async () => {
@@ -132,7 +158,7 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData, onProfileUpda
                                 <div className="space-y-1">
                                     <p className="font-medium text-foreground">
                                         {fetchedAddress?.logradouro || customerData?.address}
-                                        {customerData?.number && !fetchedAddress ? `, ${customerData.number}` : ''}
+                                        {(editNumber || customerData?.number) ? `, ${editNumber || customerData.number}` : ''}
                                         {(fetchedAddress?.complemento || customerData?.complement) ? `, ${fetchedAddress?.complemento || customerData?.complement}` : ''}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
@@ -143,36 +169,55 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData, onProfileUpda
                         </div>
                     ) : (
                         <div className="p-5 rounded-xl border border-dashed border-primary/30 bg-primary/5 space-y-3">
-                            <p className="text-sm font-medium text-foreground">Digite o CEP:</p>
-                            <div className="flex gap-2">
-                                <Input
-                                    placeholder="00000-000"
-                                    value={cep}
-                                    onChange={(e) => {
-                                        const val = e.target.value.replace(/\D/g, "").slice(0, 8);
-                                        setCep(val);
-                                        if (val.length === 8) handleCepLookup(val);
-                                    }}
-                                    className="max-w-[150px] border-primary/20 focus:border-primary"
-                                    maxLength={8}
-                                />
-                                {loadingCep && <div className="flex items-center"><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>}
+                            <div className="flex gap-4">
+                                <div className="flex-1 space-y-1">
+                                    <p className="text-sm font-medium text-foreground">CEP:</p>
+                                    <Input
+                                        placeholder="00000-000"
+                                        value={cep}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+                                            setCep(val);
+                                            if (val.length === 8) handleCepLookup(val);
+                                        }}
+                                        className="border-primary/20 focus:border-primary"
+                                        maxLength={8}
+                                    />
+                                </div>
+                                <div className="w-[100px] space-y-1">
+                                    <p className="text-sm font-medium text-foreground">Número:</p>
+                                    <Input
+                                        ref={numberInputRef}
+                                        placeholder="Ex: 123"
+                                        value={editNumber}
+                                        onChange={(e) => setEditNumber(e.target.value)}
+                                        className="border-primary/20 focus:border-primary"
+                                    />
+                                </div>
+                                {loadingCep && <div className="flex items-end pb-2"><div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>}
                             </div>
+                            {(fetchedAddress || customerData?.address) && (
+                                <p className="text-xs text-muted-foreground animate-in fade-in duration-300">
+                                    {fetchedAddress?.logradouro || customerData?.address}, {fetchedAddress?.bairro || customerData?.neighborhood}
+                                </p>
+                            )}
                         </div>
                     )}
                     <button
                         onClick={() => {
-                            if (customerData?.address && !isAlteringAddress) {
+                            if (isAlteringAddress) {
+                                handleSaveAddress();
+                            } else if (customerData?.address) {
                                 setIsAlteringAddress(true);
                                 setFetchedAddress(null);
-                                setCep("");
+                                setCep(customerData?.zipCode || "");
                             } else {
-                                navigate("/profile");
+                                setIsAlteringAddress(true);
                             }
                         }}
                         className="text-primary font-bold text-sm hover:underline uppercase tracking-tight"
                     >
-                        {customerData?.address && !isAlteringAddress ? "ALTERAR ENDEREÇO" : "CADASTRAR ENDEREÇO NO PERFIL"}
+                        {isAlteringAddress ? "Salvar" : (customerData?.address ? "ALTERAR ENDEREÇO" : "CADASTRAR ENDEREÇO")}
                     </button>
                 </div>
 
@@ -254,7 +299,7 @@ const CheckoutSummaryContent = ({ onBack, onAdvance, customerData, onProfileUpda
                         }}
                         className="text-primary font-bold text-sm hover:underline uppercase tracking-tight"
                     >
-                        {isEditingProfile ? "SALVAR ALTERAÇÕES" : "EDITAR INFORMAÇÕES"}
+                        {isEditingProfile ? "Salvar" : "EDITAR INFORMAÇÕES"}
                     </button>
                 </div>
 

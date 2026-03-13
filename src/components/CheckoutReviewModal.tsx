@@ -221,7 +221,7 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
                                             <span className="font-bold whitespace-nowrap">{(item.price * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                         </div>
                                         {item.details && (
-                                            <p className="text-sm text-muted-foreground break-words">{item.details}</p>
+                                            <p className="text-sm text-muted-foreground break-words">{item.details.split(" [")[0]}</p>
                                         )}
                                     </div>
                                 ))}

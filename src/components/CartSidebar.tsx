@@ -55,17 +55,9 @@ const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSide
                 <div className="flex-1 text-left pr-6">
                   <p className="font-bold text-slate-800 text-sm mb-0.5 leading-tight">{item.service.name}</p>
                   <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-1">
-                    {item.details}
+                    {item.details.split(" [")[0]}
                   </p>
-                  {item.infos && item.infos.length > 0 && (
-                    <div className="space-y-0.5 mb-3">
-                      {item.infos.map((info, i) => (
-                        <p key={i} className="text-[10px] text-slate-400 italic leading-tight">
-                          • {info}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+
 
                   <div className="flex items-end justify-between">
                     <div className="flex items-center bg-slate-50 rounded-lg border border-slate-100/80 px-0.5 h-6">

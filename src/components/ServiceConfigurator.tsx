@@ -266,22 +266,28 @@ const ServiceConfigurator = ({
   };
 
   const handleAdd = () => {
-    let details = service.name;
-    if (vis.seats && hasSeatPrices) details += ` - ${seats} lugares`;
-    if (vis.m2 && hasM2Prices) details += ` - ${pricing.totalAreaM2.toFixed(2)}m²`;
-    if (vis.models && selectedModel) details += ` - ${selectedModel}`;
+    const requestedParts = [];
+    if (vis.seats && hasSeatPrices) requestedParts.push(`${seats} lugares`);
+    if (vis.m2 && hasM2Prices) requestedParts.push(`${pricing.totalAreaM2.toFixed(2)}m²`);
+    if (vis.models && selectedModel) requestedParts.push(selectedModel);
+    if (vis.materials) requestedParts.push(selectedMaterial);
+    if (vis.types && selectedType) requestedParts.push(selectedType);
+    
+    const displayDetails = requestedParts.join(" - ");
+    
+    const otherParts = [];
     if (vis.adicionais && Object.keys(selectedAdicionais).length > 0) {
       const adsDetails = normalizedAdicionais
         .map((g, i) => selectedAdicionais[i])
         .filter(Boolean)
         .join(", ");
-      if (adsDetails) details += ` - ${adsDetails}`;
+      if (adsDetails) otherParts.push(adsDetails);
     }
-    if (vis.materials) details += ` - ${selectedMaterial}`;
-    if (vis.types && selectedType) details += ` - ${selectedType}`;
-    if (vis.frequency && frequency !== "Única vez") details += ` (${frequency})`;
+    if (vis.frequency && frequency !== "Única vez") otherParts.push(`(${frequency})`);
     if (vis.addons && selectedAddonNames.size > 0)
-      details += ` + ${[...selectedAddonNames].join(", ")}`;
+      otherParts.push(`+ ${[...selectedAddonNames].join(", ")}`);
+
+    const details = otherParts.length > 0 ? `${displayDetails} [${otherParts.join(" | ")}]` : displayDetails;
 
 
     const infos: string[] = [];
