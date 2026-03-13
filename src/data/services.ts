@@ -13,34 +13,35 @@ export interface ServiceItem {
   seat_prices?: { seats: number; price: number }[];
 
   /** Additive: each model adds its price on top of the seat base */
-  models?: { name: string; price: number }[];
+  models?: { name: string; price: number; info?: string }[];
 
   /** Additive: each material adds its price on top */
-  materials?: { name: string; price: number }[];
+  materials?: { name: string; price: number; info?: string }[];
 
   /** Additive: each service type adds its price on top */
-  types?: { name: string; price: number }[];
+  types?: { name: string; price: number; info?: string }[];
 
   /** Additive/Multiplier: Multiple groups of adicionales */
   adicionais?: {
     title: string;
     is_multiplier: boolean;
-    items: { name: string; price: number }[];
+    items: { name: string; price: number; info?: string }[];
   }[];
 
   /** Additive: each selected addon adds its price */
-  addons?: { name: string; price: number }[];
+  addons?: { name: string; price: number; info?: string }[];
 
   /** Frequency discounts as percentages applied to the subtotal */
   freq_discounts?: { semestral: number; anual: number };
 
   /** M2 Pricing (Alternative to seat base) */
-  m2_prices?: { name: string; price: number }[];
+  m2_prices?: { name: string; price: number; info?: string }[];
 
   /** Visibility settings for configurator sections */
   visibility?: {
     seats: boolean;
     m2: boolean;
+    m2_total?: boolean;
     models: boolean;
     models_is_multiplier?: boolean;
     adicionais: boolean;
@@ -48,6 +49,8 @@ export interface ServiceItem {
     types: boolean;
     addons: boolean;
     frequency: boolean;
+    m2_min_area?: number;
+    m2_min_price?: number;
   };
 }
 
@@ -59,4 +62,5 @@ export interface CartItem {
   quantity: number;
   details: string;
   price: number;
+  infos?: string[];
 }

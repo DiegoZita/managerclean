@@ -114,6 +114,7 @@ const Index = () => {
     quantity: number,
     details: string,
     price: number,
+    infos?: string[]
   ) => {
     setCart((prev) => {
       const existing = prev.find(
@@ -126,7 +127,7 @@ const Index = () => {
             : item,
         );
       }
-      return [...prev, { service, quantity, details, price }];
+      return [...prev, { service, quantity, details, price, infos }];
     });
     setSelectedServiceForConfig(null);
     setShowCart(true);

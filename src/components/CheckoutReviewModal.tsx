@@ -61,10 +61,7 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
                 return;
             }
 
-            if (subtotal < data.min_value) {
-                toast.error(`Este cupom exige um pedido mínimo de R$ ${data.min_value.toFixed(2)}`);
-                return;
-            }
+            toast.error(`Este cupom exige um pedido mínimo de ${data.min_value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`);
 
             setAppliedCoupon(data);
             setShowCouponInput(false);
@@ -115,7 +112,7 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
             text += `• ${item.quantity}x ${item.service.name}\n`;
         });
 
-        text += `\n*TOTAL: R$ ${total.toFixed(2)}*`;
+        text += `\n*TOTAL: ${total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}*`;
 
         const encodedMsg = encodeURIComponent(text);
         const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMsg}`;
@@ -221,7 +218,7 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
                                     <div key={idx} className="p-4 flex flex-col gap-1">
                                         <div className="flex justify-between items-start">
                                             <span className="font-semibold text-foreground pr-4">{item.quantity}x {item.service.name}</span>
-                                            <span className="font-bold whitespace-nowrap">R$ {(item.price * item.quantity).toFixed(2)}</span>
+                                            <span className="font-bold whitespace-nowrap">{(item.price * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                         </div>
                                         {item.details && (
                                             <p className="text-sm text-muted-foreground break-words">{item.details}</p>
@@ -233,13 +230,13 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
                             <div className="border-t border-border bg-muted/20 p-4 space-y-3">
                                 <div className="flex justify-between text-sm text-muted-foreground">
                                     <span>Subtotal dos itens</span>
-                                    <span>R$ {subtotal.toFixed(2)}</span>
+                                    <span>{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                 </div>
 
                                 {isMinApplied && (
                                     <div className="flex justify-between text-sm text-amber-600 bg-amber-500/10 p-2 rounded-md">
                                         <span>Valor mínimo de pedido R$ 150,00</span>
-                                        <span>+ R$ {(minOrderValue - subtotal).toFixed(2)}</span>
+                                        <span>+ {(minOrderValue - subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                 )}
 
@@ -249,15 +246,15 @@ const CheckoutReviewModal = ({ onBack, onFinish, cart, customerData, schedulingD
                                             <Ticket className="w-3 h-3" />
                                             <span>Cupom: <strong>{appliedCoupon.code}</strong></span>
                                         </div>
-                                        <span>{adjustment < 0 ? '-' : '+'} R$ {Math.abs(adjustment).toFixed(2)}</span>
+                                        <span>{adjustment < 0 ? '-' : '+'} {Math.abs(adjustment).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                 )}
 
                                 <div className="flex justify-between font-bold text-lg text-primary pt-2 border-t border-border">
                                     <span>Total a pagar</span>
                                     <div className="text-right">
-                                        <span>R$ {total.toFixed(2)}</span>
-                                        <p className="text-[13px] font-semibold text-muted-foreground mt-0.5 whitespace-nowrap">ou 10x de R$ {(total / 10).toFixed(2)}</p>
+                                        <span>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                        <p className="text-[13px] font-semibold text-muted-foreground mt-0.5 whitespace-nowrap">ou 10x de {(total / 10).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                     </div>
                                 </div>
                             </div>

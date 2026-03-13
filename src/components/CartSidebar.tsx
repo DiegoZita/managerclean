@@ -54,9 +54,18 @@ const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSide
                 </button>
                 <div className="flex-1 text-left pr-6">
                   <p className="font-bold text-slate-800 text-sm mb-0.5 leading-tight">{item.service.name}</p>
-                  <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-3">
+                  <p className="text-[11px] text-slate-400 font-medium leading-relaxed mb-1">
                     {item.details}
                   </p>
+                  {item.infos && item.infos.length > 0 && (
+                    <div className="space-y-0.5 mb-3">
+                      {item.infos.map((info, i) => (
+                        <p key={i} className="text-[10px] text-slate-400 italic leading-tight">
+                          • {info}
+                        </p>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="flex items-end justify-between">
                     <div className="flex items-center bg-slate-50 rounded-lg border border-slate-100/80 px-0.5 h-6">
@@ -78,7 +87,7 @@ const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSide
                     <div className="text-right flex flex-col items-end">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5 leading-none">Preço</p>
                       <p className="font-black text-sky-400 text-sm leading-none">
-                        R$ {(item.price * item.quantity).toFixed(2)}
+                        {(item.price * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
                     </div>
                   </div>
@@ -94,10 +103,10 @@ const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSide
         {items.length > 0 && (
           <div className="flex flex-col items-end mb-5 w-full gap-1 animate-in fade-in duration-300">
             <p className="text-2xl font-black text-sky-400 tracking-tighter leading-none">
-              R$ {total.toFixed(2)}
+              {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>
             <p className="text-[11px] font-bold text-slate-400 leading-none mr-0.5">
-              ou 10x de R$ {(total / 10).toFixed(2)} sem juros
+              ou 10x de {(total / 10).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} sem juros
             </p>
           </div>
         )}

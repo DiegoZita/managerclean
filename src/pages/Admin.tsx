@@ -72,7 +72,7 @@ import {
 
 type AdminView = "dashboard" | "services" | "orders" | "clients" | "blog" | "orcamento_pdf" | "management";
 
-interface TypeItem { name: string; price: number }
+interface TypeItem { name: string; price: number; info?: string }
 interface AddonItem { name: string; price: number }
 interface SeatPrice { seats: number; price: number }
 interface SeatPrice { seats: number; price: number }
@@ -151,6 +151,7 @@ function NamePriceListEditor({
 }) {
   const [draftName, setDraftName] = useState("");
   const [draftPrice, setDraftPrice] = useState("");
+  const [draftInfo, setDraftInfo] = useState("");
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
   const move = (i: number, dir: -1 | 1) => {
@@ -163,7 +164,7 @@ function NamePriceListEditor({
 
   const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
 
-  const updateItem = (i: number, field: "name" | "price", value: string) => {
+  const updateItem = (i: number, field: "name" | "price" | "info", value: string) => {
     const arr = items.map((item, idx) =>
       idx === i
         ? { ...item, [field]: field === "price" ? parseFloat(value) || 0 : value }
@@ -174,14 +175,16 @@ function NamePriceListEditor({
 
   const add = () => {
     const name = draftName.trim();
+    const info = draftInfo.trim();
     const price = parseFloat(draftPrice.replace(",", "."));
     if (!name || isNaN(price)) {
       toast.error("Preencha o nome e o preço corretamente");
       return;
     }
-    onChange([...items, { name, price }]);
+    onChange([...items, { name, price, info: info || undefined }]);
     setDraftName("");
     setDraftPrice("");
+    setDraftInfo("");
   };
 
   return (
@@ -200,12 +203,22 @@ function NamePriceListEditor({
             className="flex items-center gap-2 px-3 py-2 bg-background group"
           >
             <Grip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            {/* Inline-editable name */}
-            <input
-              value={item.name}
-              onChange={(e) => updateItem(i, "name", e.target.value)}
-              className="flex-1 bg-transparent text-sm border-b border-transparent hover:border-border focus:border-primary outline-none transition-colors min-w-0"
-            />
+            
+            <div className="flex flex-col flex-1 min-w-0">
+              {/* Inline-editable name */}
+              <input
+                value={item.name}
+                onChange={(e) => updateItem(i, "name", e.target.value)}
+                className="bg-transparent text-sm border-b border-transparent hover:border-border focus:border-primary outline-none transition-colors min-w-0 font-medium h-6"
+              />
+              {/* Info text below name */}
+              <input
+                value={item.info || ""}
+                onChange={(e) => updateItem(i, "info", e.target.value)}
+                placeholder="Dica informativa... (opcional)"
+                className="bg-transparent text-[10px] text-muted-foreground border-b border-transparent hover:border-border focus:border-primary outline-none transition-colors min-w-0 italic h-4"
+              />
+            </div>
             {/* Price badge - inline editable */}
             <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${accentColor ?? "bg-primary/10 text-primary"}`}>
               <span>{valuePrefix}</span>
@@ -247,29 +260,38 @@ function NamePriceListEditor({
         ))}
 
         {/* Add new row */}
-        <div className="flex gap-2 p-2 bg-background/50 items-center">
-          <Input
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-            placeholder={namePlaceholder}
-            className="h-8 text-sm flex-1"
-          />
-          <div className="flex items-center gap-1 border border-input rounded-md h-8 px-2 shrink-0">
-            <span className="text-xs text-muted-foreground">{valuePrefix}</span>
-            <input
-              type="number"
-              step="0.01"
-              value={draftPrice}
-              onChange={(e) => setDraftPrice(e.target.value)}
+        <div className="flex flex-col gap-1.5 p-2 bg-background/50 border-t border-border">
+          <div className="flex gap-2 items-center">
+            <Input
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-              placeholder={pricePlaceholder}
-              className="w-16 bg-transparent outline-none text-sm"
+              placeholder={namePlaceholder}
+              className="h-8 text-sm flex-1"
             />
+            <div className="flex items-center gap-1 border border-input rounded-md h-8 px-2 shrink-0">
+              <span className="text-xs text-muted-foreground">{valuePrefix}</span>
+              <input
+                type="number"
+                step="0.01"
+                value={draftPrice}
+                onChange={(e) => setDraftPrice(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+                placeholder={pricePlaceholder}
+                className="w-16 bg-transparent outline-none text-sm"
+              />
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={add} className="h-8 shrink-0">
+              <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
+            </Button>
           </div>
-          <Button type="button" size="sm" variant="outline" onClick={add} className="h-8 shrink-0">
-            <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar
-          </Button>
+          <Input
+            value={draftInfo}
+            onChange={(e) => setDraftInfo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
+            placeholder="Texto informativo adicional... (aparecerá ao clicar no site)"
+            className="h-7 text-[11px] italic text-muted-foreground"
+          />
         </div>
       </div>
 
@@ -530,9 +552,12 @@ const Admin = () => {
   const [addons, setAddons] = useState<AddonItem[]>([]);
   const [freqDiscounts, setFreqDiscounts] = useState<FreqDiscounts>({ semestral: 15, anual: 20 });
   const [m2Prices, setM2Prices] = useState<{ name: string; price: number }[]>([]);
+  const [m2MinArea, setM2MinArea] = useState<string>("");
+  const [m2MinPrice, setM2MinPrice] = useState<string>("");
   const [visibility, setVisibility] = useState({
     seats: false,
     m2: false,
+    m2_total: false,
     models: false,
     models_is_multiplier: false,
     adicionais: false,
@@ -1199,7 +1224,11 @@ const Admin = () => {
         types,
         addons,
         freq_discounts: freqDiscounts,
-        visibility,
+        visibility: {
+          ...visibility,
+          m2_min_area: parseFloat(m2MinArea) || 0,
+          m2_min_price: parseFloat(m2MinPrice) || 0,
+        },
         ...(editingId ? {} : { order_index: nextOrderIndex })
       };
 
@@ -1327,9 +1356,12 @@ const Admin = () => {
     setAddons(service.addons ?? []);
     setFreqDiscounts(service.freq_discounts ?? { semestral: 15, anual: 20 });
     setM2Prices(service.m2_prices ?? []);
+    setM2MinArea(String(service.visibility?.m2_min_area ?? ""));
+    setM2MinPrice(String(service.visibility?.m2_min_price ?? ""));
     setVisibility({
       seats: service.visibility?.seats ?? false,
       m2: service.visibility?.m2 ?? false,
+      m2_total: service.visibility?.m2_total ?? false,
       models: service.visibility?.models ?? false,
       models_is_multiplier: service.visibility?.models_is_multiplier ?? false,
       adicionais: service.visibility?.adicionais ?? false,
@@ -1357,9 +1389,12 @@ const Admin = () => {
     setAddons([]);
     setFreqDiscounts({ semestral: 15, anual: 20 });
     setM2Prices([]);
+    setM2MinArea("");
+    setM2MinPrice("");
     setVisibility({
       seats: false,
       m2: false,
+      m2_total: false,
       models: false,
       models_is_multiplier: false,
       adicionais: false,
@@ -1977,14 +2012,51 @@ const Admin = () => {
                           />
                         </div>
                         {visibility.m2 && (
-                          <NamePriceListEditor
-                            label=""
-                            items={m2Prices}
-                            onChange={setM2Prices}
-                            namePlaceholder="Ex: Preço Padrão (Por Metro)"
-                            pricePlaceholder="30.00"
-                            accentColor="bg-indigo-500/10 text-indigo-700"
-                          />
+                          <>
+                            <NamePriceListEditor
+                              label=""
+                              items={m2Prices}
+                              onChange={setM2Prices}
+                              namePlaceholder="Ex: Preço Padrão (Por Metro)"
+                              pricePlaceholder="30.00"
+                              accentColor="bg-indigo-500/10 text-indigo-700"
+                            />
+                            <div className="grid grid-cols-2 gap-4 mt-4 p-3 bg-indigo-500/5 rounded-lg border border-indigo-500/10">
+                              <div className="space-y-1.5">
+                                <Label className="text-[11px] font-medium text-indigo-700">📏 Área mínima (m²) que o valor mínimo cobre</Label>
+                                <Input
+                                  type="number"
+                                  value={m2MinArea}
+                                  onChange={(e) => setM2MinArea(e.target.value)}
+                                  placeholder="Ex: 30"
+                                  className="h-8 text-sm"
+                                />
+                                <p className="text-[10px] text-muted-foreground italic">Até essa área o valor será fixo.</p>
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-[11px] font-medium text-indigo-700">💰 Valor Mínimo (R$)</Label>
+                                <Input
+                                  type="number"
+                                  value={m2MinPrice}
+                                  onChange={(e) => setM2MinPrice(e.target.value)}
+                                  placeholder="Ex: 300.00"
+                                  className="h-8 text-sm"
+                                />
+                                <p className="text-[10px] text-muted-foreground italic">Valor cobrado pela área mínima.</p>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 p-3 bg-indigo-500/5 rounded-lg border border-indigo-500/10 flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label className="text-[11px] font-medium text-indigo-700">🔢 Metragem Direta</Label>
+                                <p className="text-[10px] text-muted-foreground">O cliente informa o m² total (sem largura/comp.)</p>
+                              </div>
+                              <Switch
+                                checked={!!visibility.m2_total}
+                                onCheckedChange={(checked) => setVisibility(v => ({ ...v, m2_total: checked }))}
+                              />
+                            </div>
+                          </>
                         )}
                       </div>
 

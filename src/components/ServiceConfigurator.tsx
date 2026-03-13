@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react"; // configurator updated
 import { X, Info, Tag, HelpCircle, Lock } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ServiceItem } from "@/data/services";
@@ -12,6 +12,7 @@ interface ServiceConfiguratorProps {
     quantity: number,
     details: string,
     price: number,
+    infos?: string[]
   ) => void;
 }
 
@@ -20,7 +21,7 @@ const FREQUENCIES = ["Única vez", "Semestral", "Anual"] as const;
 type Frequency = typeof FREQUENCIES[number];
 
 // ─── Fallback values used when service data has no config ────────────────────
-const FALLBACK_MATERIALS = [
+const FALLBACK_MATERIALS: { name: string; price: number; info?: string }[] = [
   { name: "Tecido", price: 0 },
   { name: "Couro", price: 80 },
 ];
@@ -57,7 +58,7 @@ const ServiceConfigurator = ({
     if (!hasAdicionais) return [];
     const ads = service.adicionais as any;
     if (ads && ads.length > 0 && ads[0].items) {
-      return ads as { title: string; is_multiplier: boolean; items: { name: string; price: number }[] }[];
+      return ads as { title: string; is_multiplier: boolean; items: { name: string; price: number; info?: string }[] }[];
     }
     // Migration for old data (flat array of items)
     return [{
@@ -81,11 +82,18 @@ const ServiceConfigurator = ({
   const [selectedType, setSelectedType] = useState<string>("");
   const [selectedAddonNames, setSelectedAddonNames] = useState<Set<string>>(new Set());
   const [frequency, setFrequency] = useState<Frequency>("Única vez");
+  const [m2Total, setM2Total] = useState<number>(0);
   const [quantity, setQuantity] = useState(1);
 
   const isReady = useMemo(() => {
     if (vis.seats && hasSeatPrices && seats === 0) return false;
-    if (vis.m2 && hasM2Prices && (m2Width * m2Length === 0)) return false;
+    if (vis.m2 && hasM2Prices) {
+      if (vis.m2_total) {
+        if (m2Total <= 0) return false;
+      } else {
+        if (m2Width * m2Length === 0) return false;
+      }
+    }
     if (vis.models && hasModels && !selectedModel) return false;
     if (vis.adicionais && hasAdicionais) {
       const allSelected = normalizedAdicionais.every((group, idx) => {
@@ -101,7 +109,13 @@ const ServiceConfigurator = ({
 
   const isConfigCompleteForType = useMemo(() => {
     if (vis.seats && hasSeatPrices && seats === 0) return false;
-    if (vis.m2 && hasM2Prices && (m2Width * m2Length === 0)) return false;
+    if (vis.m2 && hasM2Prices) {
+      if (vis.m2_total) {
+        if (m2Total <= 0) return false;
+      } else {
+        if (m2Width * m2Length === 0) return false;
+      }
+    }
     if (vis.models && hasModels && !selectedModel) return false;
     if (vis.adicionais && hasAdicionais) {
       const allSelected = normalizedAdicionais.every((group, idx) => {
@@ -122,9 +136,25 @@ const ServiceConfigurator = ({
       : 0;
 
     // 1(b). Base price from M2
-    const totalAreaM2 = m2Width * m2Length;
+    const totalAreaM2 = vis.m2_total ? m2Total : m2Width * m2Length;
     const basePriceM2 = (vis.m2 && hasM2Prices)
-      ? (service.m2_prices!.find((m) => m.name === selectedM2Price)?.price ?? 0) * totalAreaM2
+      ? (() => {
+        const targetM2 = service.m2_prices!.find((m) => m.name === selectedM2Price);
+        if (!targetM2) return 0;
+        const unitPrice = targetM2.price;
+        const minArea = vis.m2_min_area || 0;
+        const minPrice = vis.m2_min_price || 0;
+
+        if (minArea > 0 && totalAreaM2 > 0) {
+          if (totalAreaM2 <= minArea) {
+            return minPrice;
+          } else {
+            // Valor mínimo + o que exceder a área mínima cobrado por unidade
+            return minPrice + (totalAreaM2 - minArea) * unitPrice;
+          }
+        }
+        return unitPrice * totalAreaM2;
+      })()
       : 0;
 
     // Use whichever base is active (usually only one is active at a time)
@@ -217,7 +247,7 @@ const ServiceConfigurator = ({
     selectedModel, selectedMaterial, selectedType,
     selectedAddonNames, frequency,
     hasSeatPrices, hasM2Prices, hasModels, hasAdicionais, hasTypes, hasAddons,
-    service, effectiveMaterials, vis, selectedAdicionais, normalizedAdicionais
+    service, effectiveMaterials, vis, selectedAdicionais, normalizedAdicionais, m2Total
   ]);
 
   useEffect(() => {
@@ -253,7 +283,36 @@ const ServiceConfigurator = ({
     if (vis.addons && selectedAddonNames.size > 0)
       details += ` + ${[...selectedAddonNames].join(", ")}`;
 
-    onAddToCart(service, quantity, details, pricing.totalFinal);
+
+    const infos: string[] = [];
+    if (vis.models && selectedModel) {
+      const ms = service.models?.find(m => m.name === selectedModel);
+      if (ms?.info) infos.push(ms.info);
+    }
+    if (vis.adicionais) {
+      normalizedAdicionais.forEach((g, i) => {
+        const selName = selectedAdicionais[i];
+        if (selName) {
+          const item = g.items.find(it => it.name === selName);
+          if (item?.info) infos.push(item.info);
+        }
+      });
+    }
+    if (vis.materials) {
+      const mat = effectiveMaterials.find(m => m.name === selectedMaterial);
+      if (mat?.info) infos.push(mat.info);
+    }
+    if (vis.types && selectedType) {
+      const ty = service.types?.find(t => t.name === selectedType);
+      if (ty?.info) infos.push(ty.info);
+    }
+    if (vis.addons) {
+      service.addons?.forEach(a => {
+        if (selectedAddonNames.has(a.name) && a.info) infos.push(a.info);
+      });
+    }
+
+    onAddToCart(service, quantity, details, pricing.totalFinal, infos);
   };
 
   // ─── UI ───────────────────────────────────────────────────────────────────
@@ -318,29 +377,47 @@ const ServiceConfigurator = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Largura (m)</label>
-                <input
-                  type="number"
-                  min="0" step="0.1"
-                  value={m2Width || ""}
-                  onChange={e => setM2Width(Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Comprimento (m)</label>
-                <input
-                  type="number"
-                  min="0" step="0.1"
-                  value={m2Length || ""}
-                  onChange={e => setM2Length(Math.max(0, parseFloat(e.target.value) || 0))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                />
-              </div>
+              {!vis.m2_total ? (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Largura (m)</label>
+                    <input
+                      type="number"
+                      min="0" step="0.1"
+                      value={m2Width || ""}
+                      onChange={e => setM2Width(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Comprimento (m)</label>
+                    <input
+                      type="number"
+                      min="0" step="0.1"
+                      value={m2Length || ""}
+                      onChange={e => setM2Length(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="col-span-2 space-y-1">
+                  <label className="text-xs text-muted-foreground">Metragem Total (m²)</label>
+                  <input
+                    type="number"
+                    min="0" step="0.1"
+                    value={m2Total || ""}
+                    onChange={e => setM2Total(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder="Ex: 45"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  />
+                </div>
+              )}
             </div>
-            <div className="text-right text-xs text-muted-foreground">
-              Área total: <span className="font-bold text-foreground">{pricing.totalAreaM2.toFixed(2)} m²</span>
+            <div className="flex flex-col gap-1 items-end">
+              <div className="text-right text-xs text-muted-foreground">
+                Área total: <span className="font-bold text-foreground">{pricing.totalAreaM2.toFixed(2)} m²</span>
+              </div>
             </div>
           </div>
         )}
@@ -356,16 +433,23 @@ const ServiceConfigurator = ({
                   <button
                     key={model.name}
                     onClick={() => setSelectedModel(model.name)}
-                    className={`px-4 py-2 rounded-full border text-sm transition-colors flex items-center gap-1.5 ${isSelected
+                    className={`px-4 py-2 rounded-[18px] border text-sm transition-all flex items-center gap-1.5 ${isSelected
                       ? "bg-primary text-primary-foreground border-primary shadow-sm"
                       : "border-border text-foreground hover:border-primary"
                       }`}
                   >
-                    <span>{model.name}</span>
+                    <span className="font-bold">{model.name}</span>
                   </button>
                 );
               })}
             </div>
+            {selectedModel && service.models?.find(m => m.name === selectedModel)?.info && (
+              <div className="bg-muted/30 p-3 rounded-xl border border-border/50 animate-in fade-in slide-in-from-top-1 duration-300">
+                <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                  {service.models.find(m => m.name === selectedModel)?.info}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -384,16 +468,23 @@ const ServiceConfigurator = ({
                       <button
                         key={item.name}
                         onClick={() => setSelectedAdicionais(prev => ({ ...prev, [groupIdx]: item.name }))}
-                        className={`px-4 py-2 rounded-full border text-sm transition-colors flex items-center gap-1.5 ${isSelected
+                        className={`px-4 py-2 rounded-[18px] border text-sm transition-all flex items-center gap-1.5 ${isSelected
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
                           : "border-border text-foreground hover:border-primary"
                           }`}
                       >
-                        <span>{item.name}</span>
+                        <span className="font-bold">{item.name}</span>
                       </button>
                     );
                   })}
                 </div>
+                {selectedAdicionais[groupIdx] && group.items.find(it => it.name === selectedAdicionais[groupIdx])?.info && (
+                  <div className="bg-muted/30 p-3 rounded-xl border border-border/50 animate-in fade-in slide-in-from-top-1 duration-300">
+                    <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                      {group.items.find(it => it.name === selectedAdicionais[groupIdx])?.info}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -410,16 +501,23 @@ const ServiceConfigurator = ({
                   <button
                     key={mat.name}
                     onClick={() => setSelectedMaterial(mat.name)}
-                    className={`px-4 py-2 rounded-full border text-sm transition-colors flex items-center gap-1.5 ${isSelected
+                    className={`px-4 py-2 rounded-[18px] border text-sm transition-all flex items-center gap-1.5 ${isSelected
                       ? "bg-primary text-primary-foreground border-primary shadow-sm"
                       : "border-border text-foreground hover:border-primary"
                       }`}
                   >
-                    <span>{mat.name}</span>
+                    <span className="font-bold">{mat.name}</span>
                   </button>
                 );
               })}
             </div>
+            {selectedMaterial && effectiveMaterials.find(m => m.name === selectedMaterial)?.info && (
+              <div className="bg-muted/30 p-3 rounded-xl border border-border/50 animate-in fade-in slide-in-from-top-1 duration-300">
+                <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                  {effectiveMaterials.find(m => m.name === selectedMaterial)?.info}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -463,7 +561,7 @@ const ServiceConfigurator = ({
                         {isLoggedIn ? (
                           isConfigCompleteForType ? (
                             <div className={`text-sm font-bold ${isSelected ? "text-primary" : "text-foreground"}`}>
-                              R$ {projectedPrice.toFixed(2)}
+                                {projectedPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </div>
                           ) : (
                             <div className="text-xs text-muted-foreground italic">
@@ -480,6 +578,13 @@ const ServiceConfigurator = ({
                   );
                 })}
             </div>
+            {selectedType && service.types?.find(t => t.name === selectedType)?.info && (
+              <div className="bg-muted/30 p-3 rounded-xl border border-border/50 animate-in fade-in slide-in-from-top-1 duration-300">
+                <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                  {service.types.find(t => t.name === selectedType)?.info}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -537,10 +642,8 @@ const ServiceConfigurator = ({
               {service.addons!.map((addon) => {
                 const isOn = selectedAddonNames.has(addon.name);
                 return (
-                  <div
-                    key={addon.name}
-                    className="flex items-center justify-between p-2"
-                  >
+                  <Fragment key={addon.name}>
+                    <div className="flex items-center justify-between p-2">
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => toggleAddon(addon.name)}
@@ -552,39 +655,35 @@ const ServiceConfigurator = ({
                             }`}
                         />
                       </button>
-                      <span className="text-sm">{addon.name}</span>
+                      <div className="flex flex-col">
+                        <span className="text-sm">{addon.name}</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {isLoggedIn ? (
                         <span className={`text-sm font-medium ${isOn ? "text-primary" : ""}`}>
-                          +R$ {addon.price.toFixed(2)}
+                          +{addon.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Lock className="w-3 h-3" /> Login
                         </span>
                       )}
-                      {addon.name.toLowerCase().includes("odor") ? (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="hover:opacity-80 transition-opacity outline-none">
-                              <Info className="w-4 h-4 text-muted-foreground" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent side="top" className="text-sm p-3 w-64 bg-slate-900 text-white border-slate-800 shadow-xl leading-relaxed">
-                            Tratamento especializado para remoção de urina e odores em estofados.
-                          </PopoverContent>
-                        </Popover>
-                      ) : (
-                        <Info className="w-4 h-4 text-muted-foreground" />
-                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  {isOn && addon.info && (
+                    <div className="ml-12 mt-1 mb-2 bg-muted/30 p-3 rounded-xl border border-border/50 animate-in fade-in slide-in-from-top-1 duration-300">
+                      <p className="text-[11px] text-muted-foreground italic leading-tight">
+                        {addon.info}
+                      </p>
+                    </div>
+                  )}
+                </Fragment>
+              );
+            })}
           </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* ── Footer: Breakdown + Total + Add ─────────────────────── */}
@@ -615,7 +714,7 @@ const ServiceConfigurator = ({
             {pricing.subtotal > 0 && (
               <div className="flex justify-between font-medium text-foreground border-t border-border pt-1.5 mt-1">
                 <span>Subtotal</span>
-                <span>R$ {pricing.subtotal.toFixed(2)}</span>
+                <span>{pricing.subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
             )}
             {pricing.discountPct > 0 && (
@@ -624,7 +723,7 @@ const ServiceConfigurator = ({
                   <Tag className="w-3 h-3" />
                   Desconto {frequency} ({pricing.discountPct}%)
                 </span>
-                <span>- R$ {pricing.discountAmount.toFixed(2)}</span>
+                <span>- {pricing.discountAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
             )}
           </div>
@@ -637,11 +736,11 @@ const ServiceConfigurator = ({
               <span className="text-sm font-semibold text-foreground">Total do item:</span>
               {isReady ? (
                 <span className="text-2xl font-bold text-primary">
-                  R$ {(pricing.totalFinal * quantity).toFixed(2)}
+                  {(pricing.totalFinal * quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </span>
               ) : (
                 <span className="text-2xl font-bold text-muted-foreground/50">
-                  R$ 0.00
+                  R$ 0,00
                 </span>
               )}
             </div>
