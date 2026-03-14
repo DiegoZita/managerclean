@@ -4,6 +4,7 @@ export interface ServiceItem {
   icon: string;
   category: "casa" | "empresa" | "outros" | "orcamento_pdf";
   order_index?: number;
+  price?: number;
 
   /**
    * PRICING ENGINE
@@ -45,12 +46,19 @@ export interface ServiceItem {
     models: boolean;
     models_is_multiplier?: boolean;
     adicionais: boolean;
+    adicionais_is_multiplier?: boolean;
     materials: boolean;
     types: boolean;
     addons: boolean;
     frequency: boolean;
+    not_included?: boolean;
+    not_included_title?: string;
+    not_included_items?: { name: string }[];
     m2_min_area?: number;
     m2_min_price?: number;
+    show_in_both?: boolean;
+    order_index_casa?: number;
+    order_index_empresa?: number;
   };
 }
 

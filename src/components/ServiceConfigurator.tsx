@@ -20,6 +20,8 @@ interface ServiceConfiguratorProps {
 const FREQUENCIES = ["Única vez", "Semestral", "Anual"] as const;
 type Frequency = typeof FREQUENCIES[number];
 
+const normalizeStr = (str: string) => str ? str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "") : "";
+
 // ─── Fallback values used when service data has no config ────────────────────
 const FALLBACK_MATERIALS: { name: string; price: number; info?: string }[] = [
   { name: "Tecido", price: 0 },
@@ -52,6 +54,7 @@ const ServiceConfigurator = ({
     types: true,
     addons: true,
     frequency: true,
+    not_included: false,
   };
 
   const normalizedAdicionais = useMemo(() => {
@@ -85,6 +88,23 @@ const ServiceConfigurator = ({
   const [m2Total, setM2Total] = useState<number>(0);
   const [quantity, setQuantity] = useState(1);
 
+  const isForbidden = (name: string) => {
+    const mat = (selectedMaterial || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    const isL = mat.includes("cou") || mat.includes("cour") || mat.includes("corin") || mat.includes("sint");
+    if (!isL) return false;
+    
+    const n = (name || "").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+    const forbidden = n.includes("imper") || n.includes("prote") || n.includes("blind") || n.includes("permeabi");
+    return forbidden;
+  };
+
+  const effectiveModels = useMemo(() => hasModels ? service.models!.filter(m => !isForbidden(m.name)) : [], [hasModels, service.models, selectedMaterial]);
+  const effectiveTypes = useMemo(() => hasTypes ? service.types!.filter(t => !isForbidden(t.name)) : [], [hasTypes, service.types, selectedMaterial]);
+  const effectiveAdicionais = useMemo(() => hasAdicionais ? normalizedAdicionais.map(group => {
+    if (isForbidden(group.title)) return { ...group, items: [] };
+    return { ...group, items: group.items.filter(i => !isForbidden(i.name)) };
+  }) : [], [hasAdicionais, normalizedAdicionais, selectedMaterial]);
+
   const isReady = useMemo(() => {
     if (vis.seats && hasSeatPrices && seats === 0) return false;
     if (vis.m2 && hasM2Prices) {
@@ -94,18 +114,19 @@ const ServiceConfigurator = ({
         if (m2Width * m2Length === 0) return false;
       }
     }
-    if (vis.models && hasModels && !selectedModel) return false;
+
+    if (vis.models && effectiveModels.length > 0 && !selectedModel) return false;
     if (vis.adicionais && hasAdicionais) {
-      const allSelected = normalizedAdicionais.every((group, idx) => {
+      const allSelected = effectiveAdicionais.every((group, idx) => {
         if (group.items.length === 0) return true;
         return !!selectedAdicionais[idx];
       });
       if (!allSelected) return false;
     }
     if (vis.materials && effectiveMaterials.length > 0 && !selectedMaterial) return false;
-    if (vis.types && hasTypes && !selectedType) return false;
+    if (vis.types && effectiveTypes.length > 0 && !selectedType) return false;
     return true;
-  }, [vis, hasSeatPrices, seats, hasM2Prices, m2Width, m2Length, hasModels, selectedModel, hasAdicionais, selectedAdicionais, effectiveMaterials.length, selectedMaterial, hasTypes, selectedType, normalizedAdicionais]);
+  }, [vis, hasSeatPrices, seats, hasM2Prices, m2Width, m2Length, selectedModel, hasAdicionais, selectedAdicionais, effectiveMaterials.length, selectedMaterial, selectedType, effectiveModels, effectiveTypes, effectiveAdicionais]);
 
   const isConfigCompleteForType = useMemo(() => {
     if (vis.seats && hasSeatPrices && seats === 0) return false;
@@ -116,9 +137,10 @@ const ServiceConfigurator = ({
         if (m2Width * m2Length === 0) return false;
       }
     }
-    if (vis.models && hasModels && !selectedModel) return false;
+    
+    if (vis.models && effectiveModels.length > 0 && !selectedModel) return false;
     if (vis.adicionais && hasAdicionais) {
-      const allSelected = normalizedAdicionais.every((group, idx) => {
+      const allSelected = effectiveAdicionais.every((group, idx) => {
         if (group.items.length === 0) return true;
         return !!selectedAdicionais[idx];
       });
@@ -126,7 +148,7 @@ const ServiceConfigurator = ({
     }
     if (vis.materials && effectiveMaterials.length > 0 && !selectedMaterial) return false;
     return true;
-  }, [vis, hasSeatPrices, seats, hasM2Prices, m2Width, m2Length, hasModels, selectedModel, hasAdicionais, selectedAdicionais, effectiveMaterials.length, selectedMaterial, normalizedAdicionais]);
+  }, [vis, hasSeatPrices, seats, hasM2Prices, m2Width, m2Length, selectedModel, hasAdicionais, selectedAdicionais, effectiveMaterials.length, selectedMaterial, effectiveModels, effectiveAdicionais]);
 
   // ─── PRICING ENGINE ───────────────────────────────────────────────────────
   const pricing = useMemo(() => {
@@ -252,10 +274,47 @@ const ServiceConfigurator = ({
 
   useEffect(() => {
     // Regra específica: se for Couro, remover variação com Impermeabilização
-    if (selectedMaterial.toLowerCase() === "couro" && selectedType.toLowerCase().includes("impermeabiliza")) {
-      setSelectedType("");
+    const isLeather = normalizeStr(selectedMaterial).includes("cou") || normalizeStr(selectedMaterial).includes("corin");
+    if (isLeather) {
+      const isForbiddenLocal = (name: string) => {
+        const norm = normalizeStr(name);
+        return norm.includes("imper") || norm.includes("prote") || norm.includes("blind");
+      };
+
+      if (isForbiddenLocal(selectedType)) {
+        setSelectedType("");
+      }
+      
+      if (isForbiddenLocal(selectedModel)) {
+        setSelectedModel("");
+      }
+
+      setSelectedAdicionais(prev => {
+        const next = { ...prev };
+        let changed = false;
+        Object.keys(next).forEach(key => {
+          const idx = parseInt(key);
+          if (isForbiddenLocal(next[idx])) {
+            delete next[idx];
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+      
+      setSelectedAddonNames(prev => {
+        const next = new Set(prev);
+        let changed = false;
+        next.forEach(name => {
+          if (isForbiddenLocal(name)) {
+            next.delete(name);
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
     }
-  }, [selectedMaterial, selectedType]);
+  }, [selectedMaterial, selectedType, selectedModel, selectedAdicionais]);
 
   const toggleAddon = (name: string) => {
     setSelectedAddonNames((prev) => {
@@ -433,7 +492,9 @@ const ServiceConfigurator = ({
           <div className="space-y-3">
             <h3 className="font-semibold text-sm text-foreground">Modelo</h3>
             <div className="flex flex-wrap gap-2">
-              {service.models!.map((model) => {
+              {service.models!
+                .filter(m => !isForbidden(m.name))
+                .map((model) => {
                 const isSelected = selectedModel === model.name;
                 return (
                   <button
@@ -459,6 +520,26 @@ const ServiceConfigurator = ({
           </div>
         )}
 
+        {/* ── O que não fazemos (Informativo) ────────────────────── */}
+        {vis.not_included && vis.not_included_items && vis.not_included_items.length > 0 && (
+          <div className="space-y-3 pt-4 border-t">
+            <h3 className="font-semibold text-sm text-foreground">{vis.not_included_title || "O que não fazemos"}</h3>
+            <div className="flex flex-wrap gap-2">
+              {vis.not_included_items.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 border border-red-100/50"
+                >
+                  <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shrink-0 shadow-sm">
+                    <X className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                  </div>
+                  <span className="text-[11px] font-bold text-red-700 tracking-wide">{item.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Adicionais Customizados ─────────────────────────── */}
         {vis.adicionais && hasAdicionais && (
           <div className="space-y-6">
@@ -468,7 +549,9 @@ const ServiceConfigurator = ({
                   {group.title || "Adicional"}
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {group.items.map((item) => {
+                  {group.items
+                    .filter(item => !isForbidden(item.name) && !isForbidden(group.title || ""))
+                    .map((item) => {
                     const isSelected = selectedAdicionais[groupIdx] === item.name;
                     return (
                       <button
@@ -532,13 +615,7 @@ const ServiceConfigurator = ({
           <div className="space-y-3">
             <h3 className="font-semibold text-sm text-foreground">Tipo de Serviço</h3>
             <div className="space-y-2">
-              {service.types!
-                .filter((type) => {
-                  if (selectedMaterial.toLowerCase() === "couro" && type.name.toLowerCase().includes("impermeabiliza")) {
-                    return false;
-                  }
-                  return true;
-                })
+              {effectiveTypes
                 .map((type) => {
                   const isSelected = selectedType === type.name;
                   const typeMult = type.price || 1;
@@ -645,8 +722,10 @@ const ServiceConfigurator = ({
           <div className="space-y-3 pt-4 border-t">
             <h3 className="font-semibold text-sm text-foreground">Serviços adicionais</h3>
             <div className="space-y-2">
-              {service.addons!.map((addon) => {
-                const isOn = selectedAddonNames.has(addon.name);
+              {service.addons!
+                .filter(addon => !isForbidden(addon.name))
+                .map((addon) => {
+                  const isOn = selectedAddonNames.has(addon.name);
                 return (
                   <Fragment key={addon.name}>
                     <div className="flex items-center justify-between p-2">
@@ -690,6 +769,7 @@ const ServiceConfigurator = ({
           </div>
         </div>
       )}
+
       </div>
 
       {/* ── Footer: Breakdown + Total + Add ─────────────────────── */}
@@ -755,13 +835,21 @@ const ServiceConfigurator = ({
             <div className="flex gap-3">
               <div className="flex items-center rounded-lg border bg-background">
                 <button
+                  type="button"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   className="px-3 py-2 text-primary hover:bg-muted font-bold text-lg leading-none"
                 >
                   −
                 </button>
-                <span className="w-8 text-center text-sm font-semibold">{quantity}</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-12 text-center text-sm font-semibold bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
                 <button
+                  type="button"
                   onClick={() => setQuantity(quantity + 1)}
                   className="px-3 py-2 text-primary hover:bg-muted font-bold text-lg leading-none"
                 >

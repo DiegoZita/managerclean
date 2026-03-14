@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 interface CartSidebarProps {
   items: CartItem[];
   onUpdateQuantity: (index: number, delta: number) => void;
+  onSetQuantity: (index: number, value: number) => void;
   onRemove: (index: number) => void;
   onCheckout?: () => void;
 }
 
-const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSidebarProps) => {
+const CartSidebar = ({ items, onUpdateQuantity, onSetQuantity, onRemove, onCheckout }: CartSidebarProps) => {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const minOrderValue = 150;
@@ -67,7 +68,13 @@ const CartSidebar = ({ items, onUpdateQuantity, onRemove, onCheckout }: CartSide
                       >
                         <Minus className="h-2 w-2" />
                       </button>
-                      <span className="w-5 text-center text-[10px] font-black text-slate-700">{item.quantity}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => onSetQuantity(idx, Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-8 text-center text-[10px] font-black text-slate-700 bg-transparent border-none focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
                       <button
                         onClick={() => onUpdateQuantity(idx, 1)}
                         className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-sky-400 transition-colors"

@@ -181,6 +181,16 @@ const Index = () => {
     );
   };
 
+  const setDirectQuantity = (index: number, value: number) => {
+    setCart((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? { ...item, quantity: Math.max(1, value) }
+          : item,
+      )
+    );
+  };
+
   const removeItem = (index: number) => {
     setCart((prev) => prev.filter((_, i) => i !== index));
   };
@@ -206,7 +216,25 @@ const Index = () => {
     setCart([]);
   };
 
-  const itemsForActiveTab = services.filter((s) => s.category === activeTab);
+  const itemsForActiveTab = services.filter((s) => {
+    // Se a categoria for EXATAMENTE a aba selecionada, mostra.
+    if (s.category === activeTab) return true;
+    
+    // Se a aba for "casa" ou "empresa" e o serviço tiver a flag "show_in_both", também mostra.
+    if ((activeTab === "casa" || activeTab === "empresa") && s.visibility?.show_in_both) {
+      return true;
+    }
+    
+    return false;
+  }).sort((a, b) => {
+    if (activeTab === "casa") {
+      return (a.visibility?.order_index_casa ?? a.order_index ?? 0) - (b.visibility?.order_index_casa ?? b.order_index ?? 0);
+    }
+    if (activeTab === "empresa") {
+      return (a.visibility?.order_index_empresa ?? a.order_index ?? 0) - (b.visibility?.order_index_empresa ?? b.order_index ?? 0);
+    }
+    return (a.order_index ?? 0) - (b.order_index ?? 0);
+  });
   const outrosServicos = services.filter((s) => s.category === "outros");
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -310,6 +338,7 @@ const Index = () => {
                 <CartSidebar
                   items={cart}
                   onUpdateQuantity={updateQuantity}
+                  onSetQuantity={setDirectQuantity}
                   onRemove={removeItem}
                   onCheckout={handleCheckoutInitiation}
                 />
@@ -330,6 +359,7 @@ const Index = () => {
                 <CartSidebar
                   items={cart}
                   onUpdateQuantity={updateQuantity}
+                  onSetQuantity={setDirectQuantity}
                   onRemove={removeItem}
                   onCheckout={() => {
                     setShowCart(false);

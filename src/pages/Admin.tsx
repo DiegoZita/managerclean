@@ -52,7 +52,8 @@ import {
   AlertCircle,
   Filter,
   MoreHorizontal,
-  Ticket
+  Ticket,
+  ArrowRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -543,7 +544,7 @@ const Admin = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<"casa" | "empresa" | "outros">("casa");
+  const [category, setCategory] = useState<"casa" | "empresa" | "outros" | "ambos">("casa");
   const [seatPrices, setSeatPrices] = useState<SeatPrice[]>([]);
   const [models, setModels] = useState<{ name: string; price: number }[]>([]);
   const [adicionais, setAdicionais] = useState<{ title: string; is_multiplier: boolean; items: { name: string; price: number }[] }[]>([]);
@@ -554,6 +555,8 @@ const Admin = () => {
   const [m2Prices, setM2Prices] = useState<{ name: string; price: number }[]>([]);
   const [m2MinArea, setM2MinArea] = useState<string>("");
   const [m2MinPrice, setM2MinPrice] = useState<string>("");
+  const [notIncludedTitle, setNotIncludedTitle] = useState<string>("O que não fazemos");
+  const [notIncludedItems, setNotIncludedItems] = useState<{ name: string }[]>([]);
   const [visibility, setVisibility] = useState({
     seats: false,
     m2: false,
@@ -566,6 +569,7 @@ const Admin = () => {
     types: false,
     addons: false,
     frequency: false,
+    not_included: false,
   });
 
   // Image upload
@@ -1205,8 +1209,10 @@ const Admin = () => {
 
       // Descobrir qual o próximo order_index caso seja um NOVO registro
       let nextOrderIndex = 0;
+      const dbCategory = category === "ambos" ? "casa" : category;
+
       if (!editingId) {
-        const categoryServices = services.filter(s => s.category === category);
+        const categoryServices = services.filter(s => s.category === dbCategory);
         if (categoryServices.length > 0) {
           nextOrderIndex = Math.max(...categoryServices.map(s => s.order_index ?? 0)) + 1;
         }
@@ -1215,7 +1221,7 @@ const Admin = () => {
       const payload = {
         name: name.trim(),
         icon: iconUrl,
-        category,
+        category: dbCategory,
         seat_prices: seatPrices,
         m2_prices: m2Prices,
         models,
@@ -1226,8 +1232,11 @@ const Admin = () => {
         freq_discounts: freqDiscounts,
         visibility: {
           ...visibility,
+          not_included_title: notIncludedTitle,
+          not_included_items: notIncludedItems,
           m2_min_area: parseFloat(m2MinArea) || 0,
           m2_min_price: parseFloat(m2MinPrice) || 0,
+          show_in_both: category === "ambos"
         },
         ...(editingId ? {} : { order_index: nextOrderIndex })
       };
@@ -1255,11 +1264,24 @@ const Admin = () => {
     }
   };
 
-  const moveService = async (service: ServiceItem, direction: "up" | "down") => {
-    // 1. Pegar todos da MESMA CATEGORIA e ordená-los pelo order_index ou id caso default zero
+  const moveService = async (service: ServiceItem, direction: "up" | "down", contextCategory?: string) => {
+    const listCategory = contextCategory || service.category;
+
+    const getOrder = (s: ServiceItem) => {
+      if (listCategory === "casa") return s.visibility?.order_index_casa ?? s.order_index ?? 0;
+      if (listCategory === "empresa") return s.visibility?.order_index_empresa ?? s.order_index ?? 0;
+      return s.order_index ?? 0;
+    };
+
+    // Pegar todos que aparecem na mesma lista do Admin
     const sameCategory = services
-      .filter((s) => s.category === service.category)
-      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+      .filter((s) => {
+        if (listCategory === "empresa") {
+          return s.category === "empresa" || s.visibility?.show_in_both;
+        }
+        return s.category === listCategory;
+      })
+      .sort((a, b) => getOrder(a) - getOrder(b));
 
     const currentIndex = sameCategory.findIndex((s) => s.id === service.id);
     if (currentIndex === -1) return;
@@ -1271,29 +1293,55 @@ const Admin = () => {
     const swapIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
     const neighbor = sameCategory[swapIndex];
 
-    const currentOrder = service.order_index ?? currentIndex;
-    const neighborOrder = neighbor.order_index ?? swapIndex;
+    const currentOrder = getOrder(service);
+    const neighborOrder = getOrder(neighbor);
 
     // Se eles possuem exactly the same order index somehow (DB reset), force array index
     const newCurrentOrder = currentOrder === neighborOrder ? swapIndex : neighborOrder;
     const newNeighborOrder = currentOrder === neighborOrder ? currentIndex : currentOrder;
 
+    // Função para atualizar o objeto service com o novo índice no contexto
+    const updateServiceOrder = (s: ServiceItem, newOrder: number) => {
+      if (listCategory === "casa" || listCategory === "empresa") {
+        const field = listCategory === "casa" ? "order_index_casa" : "order_index_empresa";
+        return {
+          ...s,
+          visibility: {
+            ...(s.visibility || {}),
+            [field]: newOrder
+          } as any
+        };
+      }
+      return { ...s, order_index: newOrder };
+    };
+
+    const updatedService = updateServiceOrder(service, newCurrentOrder);
+    const updatedNeighbor = updateServiceOrder(neighbor, newNeighborOrder);
+
     // Atualização otimista local
     setServices(prev => prev.map(s => {
-      if (s.id === service.id) return { ...s, order_index: newCurrentOrder };
-      if (s.id === neighbor.id) return { ...s, order_index: newNeighborOrder };
+      if (s.id === service.id) return updatedService as any;
+      if (s.id === neighbor.id) return updatedNeighbor as any;
       return s;
-    }).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)));
+    }));
 
     try {
-      // Background request duplo (sem await obstrutivo para n travar a UI)
+      // Atualizar no banco
+      const updateDB = async (s: ServiceItem, updatedObj: any) => {
+        if (listCategory === "casa" || listCategory === "empresa") {
+          return supabase.from("services").update({ visibility: updatedObj.visibility }).eq("id", s.id);
+        } else {
+          return supabase.from("services").update({ order_index: updatedObj.order_index }).eq("id", s.id);
+        }
+      };
+
       await Promise.all([
-        supabase.from("services").update({ order_index: newCurrentOrder }).eq("id", service.id),
-        supabase.from("services").update({ order_index: newNeighborOrder }).eq("id", neighbor.id)
+        updateDB(service, updatedService),
+        updateDB(neighbor, updatedNeighbor)
       ]);
     } catch {
       toast.error("Erro ao sincronizar ordem no banco.");
-      fetchServices(); // Volta estado anterior em caso de erro
+      fetchServices();
     }
   };
 
@@ -1338,7 +1386,13 @@ const Admin = () => {
   const openEdit = (service: ServiceItem) => {
     setEditingId(service.id);
     setName(service.name);
-    setCategory(service.category as any);
+    
+    // Se a flag show_in_both estiver ativa, voltamos com a categoria "ambos" no estado do formulário
+    if (service.visibility?.show_in_both) {
+      setCategory("ambos");
+    } else {
+      setCategory(service.category as any);
+    }
     setSeatPrices((service.seat_prices as any) ?? []);
     setModels((service.models as any) ?? []);
     // Convert old flat array to new group format if needed
@@ -1355,6 +1409,8 @@ const Admin = () => {
     setTypes(service.types ?? []);
     setAddons(service.addons ?? []);
     setFreqDiscounts(service.freq_discounts ?? { semestral: 15, anual: 20 });
+    setNotIncludedTitle(service.visibility?.not_included_title ?? "O que não fazemos");
+    setNotIncludedItems(service.visibility?.not_included_items ?? []);
     setM2Prices(service.m2_prices ?? []);
     setM2MinArea(String(service.visibility?.m2_min_area ?? ""));
     setM2MinPrice(String(service.visibility?.m2_min_price ?? ""));
@@ -1370,6 +1426,7 @@ const Admin = () => {
       types: service.visibility?.types ?? false,
       addons: service.visibility?.addons ?? false,
       frequency: service.visibility?.frequency ?? false,
+      not_included: service.visibility?.not_included ?? false,
     });
     setCurrentIconUrl(service.icon || "");
     setIconPreview(service.icon?.startsWith("http") ? service.icon : "");
@@ -1388,6 +1445,8 @@ const Admin = () => {
     setTypes([]);
     setAddons([]);
     setFreqDiscounts({ semestral: 15, anual: 20 });
+    setNotIncludedTitle("O que não fazemos");
+    setNotIncludedItems([]);
     setM2Prices([]);
     setM2MinArea("");
     setM2MinPrice("");
@@ -1403,6 +1462,7 @@ const Admin = () => {
       types: false,
       addons: false,
       frequency: false,
+      not_included: false,
     });
     setIconFile(null);
     setIconPreview("");
@@ -1974,8 +2034,9 @@ const Admin = () => {
                             onChange={(e) => setCategory(e.target.value as any)}
                           >
                             <option value="casa">Preferidos</option>
-                            <option value="outros">Catálogo Completo</option>
                             <option value="empresa">Empresarial</option>
+                            <option value="ambos">Ambos (Preferidos & Empresarial)</option>
+                            <option value="outros">Catálogo Completo</option>
                           </select>
                         </div>
                       </CardContent>
@@ -2336,6 +2397,117 @@ const Admin = () => {
                           </div>
                         )}
                       </div>
+
+                      {/* Not Included / O que não fazemos */}
+                      <div className={`p-4 rounded-xl border transition-colors ${visibility.not_included ? 'bg-red-500/5 border-red-500/20' : 'bg-muted/10 opacity-70 border-border'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="font-semibold flex items-center gap-2">🚫 O que não fazemos (Informativo)</Label>
+                          <Switch
+                            checked={visibility.not_included}
+                            onCheckedChange={(checked) => setVisibility(v => ({ ...v, not_included: checked }))}
+                          />
+                        </div>
+                        {visibility.not_included && (
+                          <div className="space-y-3 pt-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Título Customizado</Label>
+                              <Input 
+                                value={notIncludedTitle} 
+                                onChange={(e) => setNotIncludedTitle(e.target.value)} 
+                                placeholder="Ex: O que não fazemos"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            
+                            <div className="space-y-2 pt-1 border-t">
+                              <Label className="text-xs text-muted-foreground">Itens da Lista (Ex: "Secador")</Label>
+                              <div className="flex flex-col gap-2">
+                                {notIncludedItems.map((item, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-background border border-border group">
+                                    <div className="flex flex-col items-center">
+                                      <button 
+                                        type="button"
+                                        onClick={() => {
+                                          if (idx === 0) return;
+                                          const arr = [...notIncludedItems];
+                                            [arr[idx], arr[idx - 1]] = [arr[idx - 1], arr[idx]];
+                                            setNotIncludedItems(arr);
+                                        }}
+                                        disabled={idx === 0}
+                                        className="p-0 leading-none rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"
+                                      >
+                                        <ChevronUp className="h-4 w-4" />
+                                      </button>
+                                      <button 
+                                        type="button"
+                                        onClick={() => {
+                                          if (idx === notIncludedItems.length - 1) return;
+                                          const arr = [...notIncludedItems];
+                                            [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+                                            setNotIncludedItems(arr);
+                                        }}
+                                        disabled={idx === notIncludedItems.length - 1}
+                                        className="p-0 leading-none rounded hover:bg-muted disabled:opacity-30 text-muted-foreground"
+                                      >
+                                        <ChevronDown className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                    <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center shrink-0">
+                                      <X className="w-3 h-3 text-white" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <input 
+                                        value={item.name}
+                                        onChange={(e) => {
+                                          const newArr = [...notIncludedItems];
+                                          newArr[idx].name = e.target.value;
+                                          setNotIncludedItems(newArr);
+                                        }}
+                                        className="bg-transparent text-sm border-b border-transparent hover:border-border focus:border-primary outline-none transition-colors w-full font-medium h-6"
+                                      />
+                                    </div>
+                                    <button 
+                                      onClick={() => setNotIncludedItems(prev => prev.filter((_, i) => i !== idx))}
+                                      className="p-1 rounded opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 transition-all focus:outline-none"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex gap-2 pt-2">
+                                <Input 
+                                  id="new-not-included"
+                                  placeholder="Digite o item e aperte enter..."
+                                  className="h-9 text-sm flex-1"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      const val = e.currentTarget.value.trim();
+                                      if (val) {
+                                        setNotIncludedItems([...notIncludedItems, { name: val }]);
+                                        e.currentTarget.value = "";
+                                      }
+                                    }
+                                  }}
+                                />
+                                <Button 
+                                  variant="outline" className="h-9" 
+                                  onClick={() => {
+                                    const input = document.getElementById('new-not-included') as HTMLInputElement;
+                                    if (input && input.value.trim()) {
+                                      setNotIncludedItems([...notIncludedItems, { name: input.value.trim() }]);
+                                      input.value = "";
+                                    }
+                                  }}
+                                >
+                                  Adicionar
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -2460,16 +2632,19 @@ const Admin = () => {
                         <span>Domiciliar ({services.filter(s => s.category === "casa").length})</span>
                       </div>
                       <div className="divide-y">
-                        {services.filter(s => s.category === "casa").map((service, index, arr) => (
+                        {services
+                          .filter(s => s.category === "casa")
+                          .sort((a, b) => (a.visibility?.order_index_casa ?? a.order_index ?? 0) - (b.visibility?.order_index_casa ?? b.order_index ?? 0))
+                          .map((service, index, arr) => (
                           <div
                             key={service.id}
                             className="flex items-center gap-3 p-3 text-sm hover:bg-muted/30 transition-colors"
                           >
                             <div className="flex flex-col items-center opacity-50 hover:opacity-100">
-                              <button onClick={() => moveService(service, "up")} disabled={index === 0} className="disabled:invisible">
+                              <button onClick={() => moveService(service, "up", "casa")} disabled={index === 0} className="disabled:invisible">
                                 <ChevronUp className="w-3 h-3" />
                               </button>
-                              <button onClick={() => moveService(service, "down")} disabled={index === arr.length - 1} className="disabled:invisible">
+                              <button onClick={() => moveService(service, "down", "casa")} disabled={index === arr.length - 1} className="disabled:invisible">
                                 <ChevronDown className="w-3 h-3" />
                               </button>
                             </div>
@@ -2537,7 +2712,17 @@ const Admin = () => {
                     { cat: "empresa", title: "Empresarial" },
                     { cat: "outros", title: "Catálogo Completo" }
                   ].map((group) => {
-                    const groupItems = services.filter(s => s.category === group.cat);
+                    const groupItems = services.filter(s => {
+                      if (group.cat === "empresa") {
+                        return s.category === "empresa" || s.visibility?.show_in_both;
+                      }
+                      return s.category === group.cat;
+                    }).sort((a, b) => {
+                      if (group.cat === "empresa") {
+                        return (a.visibility?.order_index_empresa ?? a.order_index ?? 0) - (b.visibility?.order_index_empresa ?? b.order_index ?? 0);
+                      }
+                      return (a.order_index ?? 0) - (b.order_index ?? 0);
+                    });
                     if (groupItems.length === 0) return null;
 
                     return (
@@ -2552,10 +2737,10 @@ const Admin = () => {
                               className="flex items-center gap-3 p-3 text-sm hover:bg-muted/30 transition-colors"
                             >
                               <div className="flex flex-col items-center opacity-50 hover:opacity-100">
-                                <button onClick={() => moveService(service, "up")} disabled={index === 0} className="disabled:invisible">
+                                <button onClick={() => moveService(service, "up", group.cat)} disabled={index === 0} className="disabled:invisible">
                                   <ChevronUp className="w-3 h-3" />
                                 </button>
-                                <button onClick={() => moveService(service, "down")} disabled={index === groupItems.length - 1} className="disabled:invisible">
+                                <button onClick={() => moveService(service, "down", group.cat)} disabled={index === groupItems.length - 1} className="disabled:invisible">
                                   <ChevronDown className="w-3 h-3" />
                                 </button>
                               </div>
